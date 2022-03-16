@@ -8,7 +8,7 @@ class CVideoCaptureThread(QThread):
         super().__init__(parent=parent)
         self.m_lib_capture = 0
 
-    def set_capture_lib(self,libcapture):
+    def set_capture_lib(self, libcapture):
         self.m_lib_capture = libcapture
         self.m_color_fmt = MWCAP_VIDEO_COLOR_FORMAT_UNKNOWN
         self.m_quant_rng = MWCAP_VIDEO_QUANTIZATION_UNKNOWN

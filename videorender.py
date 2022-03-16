@@ -118,6 +118,7 @@ g_ver_textures2 = np.array([0.0,0.5,1.0,0.5,0.0,0.0,1.0,0.0],dtype=np.float32)
 g_ver_textures3 = np.array([0.0,0.75,1.0,0.75,0.0,0.5,1.0,0.5],dtype=np.float32)
 #g_ver_textures = np.array([1.0,1.0,0.0,1.0,0.0,0.0,1.0,0.0],dtype=np.float32)
 
+
 class CRenderWid(QOpenGLWidget):
     def __init__(self, parent=None, flags = QtCore.Qt.WindowFlags()):
         super().__init__(parent=parent, flags=flags)
@@ -424,7 +425,7 @@ class CRenderWid(QOpenGLWidget):
 
         return True
 
-    def put_frame(self,pbframe):
+    def put_frame(self, pbframe):
         self.m_data = copy.deepcopy(pbframe)
         self.update()
         

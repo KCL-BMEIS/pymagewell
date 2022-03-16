@@ -1,15 +1,11 @@
-from PyQt5 import QtWidgets,QtCore,QtGui
-from PyQt5.QtWidgets import QMenuBar,QMenu,QAction,QLabel,QStatusBar,QMessageBox,QFileDialog
-from PyQt5.QtGui import QImage,QPixmap
-from PyQt5.QtCore import QByteArray,QTimer
-from OpenGL.arrays import *
+from PyQt5 import QtWidgets
+from PyQt5.QtWidgets import QMenu,QAction,QMessageBox,QFileDialog
+from PyQt5.QtCore import QTimer
 from videorender import *
 from audiorender import *
-from mwcapture.libmwcapture import *
 from capture import *
 from mp4filesave import *
-# from test_pyav import *
-#import pyaudio
+
 
 class CAVCaptureWid(QtWidgets.QMainWindow):
     def __init__(self, parent=None, flags=QtCore.Qt.WindowFlags()):
@@ -18,7 +14,6 @@ class CAVCaptureWid(QtWidgets.QMainWindow):
         self.m_n_capture_index = -1
         self.m_n_cx = 1920
         self.m_n_cy = 1080
-        #self.m_fourcc = MWFOURCC_YUY2
         self.m_fourcc = MWFOURCC_NV12
         self.m_frameduration = 166667
         self.m_n_channels = 2
@@ -28,11 +23,8 @@ class CAVCaptureWid(QtWidgets.QMainWindow):
         self.m_dev_name = []
         self.m_capture = CAVCapture()
         self.m_capture.enum_device()
-        #self.m_pyaudio = pyaudio.PyAudio()
         self.m_audio_render = CAudioRender(self)
-        #self.m_stream = 0
-        #self.m_video_callback = mw_video_capture_callback(video_capture_callback)
-        #self.m_audio_callback = mw_audio_capture_callback(audio_capture_callback)
+
         self.m_ptr = py_object(self)
         self.m_mp4_writer = CMWMp4Save()
         self.m_venc_thread = CVenThread()

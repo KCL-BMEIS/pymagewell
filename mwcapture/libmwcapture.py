@@ -1,10 +1,10 @@
 import platform
 from ctypes import *
-from win32 import win32event
 
 MW_SUCCEEDED = 0
 MW_FAILED = 1
 MW_INVALID_PARAMS = 2
+
 
 def mw_fourcc(str):
     t_val = 0

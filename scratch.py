@@ -14,3 +14,7 @@ class VideoSettings:
 
 capturer = mw_capture()
 capturer.mw_capture_init_instance()
+
+capturer.mw_refresh_device()
+
+self.m_video_render.open_render(self.m_fourcc, self.m_n_cx, self.m_n_cy)

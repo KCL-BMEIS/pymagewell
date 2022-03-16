@@ -368,7 +368,7 @@ MWCAP_VIDEO_QUANTIZATION_LIMITED = 0x02
 
 '''
 typedef enum _MWCAP_VIDEO_SATURATION_RANGE {		
-	MWCAP_VIDEO_SATURATION_UNKNOWN					= 0x00,///<The default saturation range
+	MWCAP_VIDEO_SATURATION_UNKNOWN					= 0x00,///<The default saturation_range range
 	MWCAP_VIDEO_SATURATION_FULL						= 0x01,///<Full range, which has 8-bit data. The black-white color range is 0-255/1023/4095/65535
 	MWCAP_VIDEO_SATURATION_LIMITED					= 0x02,///<Limited range, which has 8-bit data. The black-white color range is 16/64/256/4096-235(240)/940(960)/3760(3840)/60160(61440)
 	MWCAP_VIDEO_SATURATION_EXTENDED_GAMUT			= 0x03 ///<Extended range, which has 8-bit data. The black-white color range is 1/4/16/256-254/1019/4079/65279
@@ -444,7 +444,7 @@ typedef struct _MWCAP_VIDEO_SIGNAL_STATUS {
 	MWCAP_VIDEO_FRAME_TYPE							frameType;								///<video frame type
 	MWCAP_VIDEO_COLOR_FORMAT						colorFormat;							///<video color format
 	MWCAP_VIDEO_QUANTIZATION_RANGE					quantRange;								///<Quantization range
-	MWCAP_VIDEO_SATURATION_RANGE					satRange;								///<saturation range
+	MWCAP_VIDEO_SATURATION_RANGE					satRange;								///<saturation_range range
 } MWCAP_VIDEO_SIGNAL_STATUS;
 '''
 class mw_video_signal_status(Structure):
@@ -1039,12 +1039,12 @@ class mw_capture(object):
             return -1
         return self.m_lib_mw_capture.MWScheduleTimer(hchannel,timernotify,expiretime)
 
-    def mw_get_video_buffer_info(self,hchannel,videobufferinfo):
+    def mw_get_video_buffer_info(self, hchannel, videobufferinfo):
         if self.m_lib_mw_capture == 0:
             return -1
         return self.m_lib_mw_capture.MWGetVideoBufferInfo(hchannel,byref(videobufferinfo))
 
-    def mw_get_video_frame_info(self,hchannel,t_index,t_videoframeinfo):
+    def mw_get_video_frame_info(self, hchannel, t_index, t_videoframeinfo):
         if self.m_lib_mw_capture == 0:
             return -1
         t_ret = self.m_lib_mw_capture.MWGetVideoFrameInfo(hchannel,t_index,t_videoframeinfo)

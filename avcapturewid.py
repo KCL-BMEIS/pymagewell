@@ -212,7 +212,9 @@ class CAVCaptureWid(QtWidgets.QMainWindow):
         if action == self.m_ac_exit:
             self.close()
 
-    def slot_device_selected(self,action):
+    def slot_device_selected(self, action):
+        """ Called when a device is selected from the devices menu bar menu. Passed as a callback to self.m_menu_device,
+         which is a QMenu."""
         t_n_index = 0
         t_select_index = 0
         for t_action in self.m_menu_device_act:
@@ -261,6 +263,7 @@ class CAVCaptureWid(QtWidgets.QMainWindow):
             self.m_ac_start_record.setEnabled(True)
     
     def slot_on_view(self,checked):
+        """ When View menu is selected."""
         self.m_b_status_bar = checked
         if self.m_b_status_bar == True:
             self.m_video_render.resize(self.width(),self.height()-self.m_n_status_bar_height)
@@ -275,10 +278,10 @@ class CAVCaptureWid(QtWidgets.QMainWindow):
             str = '%dx%d NV12 %.2ffps' %(self.m_capture.m_cx,self.m_capture.m_cy,self.m_capture.m_h_video_thread.m_d_fps)
             self.m_statusbar.showMessage(str)
 
-    def paintEvent(self,event):
+    def paintEvent(self, event):
         pass
 
-    def print_channel_info(self,t_channel_info):
+    def print_channel_info(self, t_channel_info):
          print('family id:%d\n'
                'product id:%d\n'
                'hardware ver:%s\n'
@@ -305,18 +308,18 @@ class CAVCaptureWid(QtWidgets.QMainWindow):
                 t_channel_info.byChannelIndex
                 ))
     
-    def video_callback(self,pbframe,cbsize,u64timestamp):
+    def video_callback(self, pbframe, cbsize, u64timestamp):
         if cbsize > 0:
-            t_str_buf = string_at(pbframe,cbsize)
+            t_str_buf = string_at(pbframe, cbsize)
             t_bytes = bytes(t_str_buf)
             self.m_video_render.put_frame(t_bytes)
             if self.m_b_record:
                 self.m_venc_thread.put_video_frame(pbframe, cbsize, u64timestamp)
     
 
-    def audio_callback(self,pbframe,cbsize,u64timestamp):
+    def audio_callback(self,pbframe, cbsize, u64timestamp):
         if cbsize >0:
-            t_str_buf = string_at(pbframe,cbsize)
+            t_str_buf = string_at(pbframe, cbsize)
             t_bytes = bytes(t_str_buf)
             self.m_audio_render.write_frame(t_bytes)
             if self.m_b_record:

@@ -215,13 +215,13 @@ class CVideoCaptureThread(QThread):
                     )
 
                     win32event.WaitForSingleObject(self.m_h_event_capture,win32event.INFINITE)
-                    self.m_lib_capture.mw_get_device_time(self.m_h_channel,t_ll_time_now)
+                    self.m_lib_capture.mw_get_device_time(self.m_h_channel, t_ll_time_now)
                     t_ret = self.m_lib_capture.mw_get_video_capture_status(self.m_h_channel,t_video_capture_status)
                     if self.m_callback != 0:
                         t_size = t_frame_size
                         if self.m_fourcc == MWFOURCC_NV12:
                             t_size = self.m_n_cx*self.m_n_cy*2
-                        self.m_callback(addressof(t_buffer),t_size,t_ll_time_now.m_ll_device_time.value)
+                        self.m_callback(addressof(t_buffer), t_size, t_ll_time_now.m_ll_device_time.value)  # this function is CAVCaptureWid.video_callback()
                     t_frame_count += 1
 
                     if t_frame_count%10 == 0:

@@ -188,7 +188,7 @@ class CVenThread(QThread):
         win32event.SetEvent(self.m_event_exit)
         self.wait()
 
-    def put_video_frame(self,frame,t_len,ts):
+    def put_video_frame(self, frame, t_len, ts):
         self.m_video_buffer = frame
         self.m_video_buffer_len = t_len
         self.m_audio_buffer_ts = ts

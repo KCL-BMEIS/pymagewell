@@ -1,2 +1,2 @@
 # pymagewell
-Python library for interfacing with Magewell PoCapture frame grabbers
+Python library for interfacing with Magewell ProCapture frame grabbers

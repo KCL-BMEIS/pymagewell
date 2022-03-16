@@ -1,8 +1,10 @@
 """ This file was translated from the cpp example CaptureByInput.cpp"""
 from ctypes import create_unicode_buffer, create_string_buffer, addressof, string_at
 from dataclasses import dataclass
+from io import BytesIO
 from typing import Any, List
 
+from PIL import Image
 from win32 import win32api, win32event
 
 from mwcapture.libmwcapture import mw_capture, MWFOURCC_BGR24, fourcc_calc_min_stride, fourcc_calc_image_size, \
@@ -12,7 +14,7 @@ from mwcapture.libmwcapture import mw_capture, MWFOURCC_BGR24, fourcc_calc_min_s
     MWCAP_VIDEO_ASPECT_RATIO_CROPPING, MWCAP_VIDEO_SATURATION_UNKNOWN, MWCAP_VIDEO_COLOR_FORMAT_UNKNOWN, \
     MWCAP_VIDEO_QUANTIZATION_UNKNOWN, mw_video_capture_status, mw_device_time, MWFOURCC_NV12
 
-NUM_FRAMES_TO_CAPTURE = 60
+NUM_FRAMES_TO_CAPTURE = 5
 
 @dataclass
 class Dimensions:
@@ -121,6 +123,8 @@ if __name__ == '__main__':
     stop_flag: bool = False
     frame_buffer = create_string_buffer(3840*2160*4)
 
+    images = []
+
     for i in range(NUM_FRAMES_TO_CAPTURE):
         if stop_flag:
             break
@@ -209,9 +213,12 @@ if __name__ == '__main__':
         print(f"Total time was {total_time}.")
 
         t_str_buf = string_at(frame_buffer, video_settings.image_size)
-        t_bytes = bytes(t_str_buf)  # these bytes need to be rendered into an image somehow (maybe by OpenGL)
+        images.append(Image.open(BytesIO(bytes(t_str_buf))))
 
     # Shutdown
     capturer.mw_unregister_notify(channel, notification)
     capturer.mw_stop_video_capture(channel)
     shutdown(capturer, channel, [capture_event, notify_event])
+
+    for image in images:
+        image.show()

@@ -1,10 +1,11 @@
 from ctypes import create_unicode_buffer
-from typing import Any
+from typing import cast
 
 from mwcapture.libmwcapture import mw_capture, mwcap_video_buffer_info, mwcap_video_frame_info, mw_video_signal_status, \
     MW_SUCCEEDED, MWCAP_VIDEO_SIGNAL_NONE, MWCAP_VIDEO_SIGNAL_UNSUPPORTED, MWCAP_VIDEO_SIGNAL_LOCKING, \
     MWCAP_VIDEO_SIGNAL_LOCKED, mw_video_capture_status
-from pymagewell.event import RegisterableEvent, SignalChangeEvent, CaptureEvent, FrameBufferingEvent, FrameBufferedEvent
+from pymagewell.event import RegisterableEvent, SignalChangeEvent, CaptureEvent, FrameBufferingEvent, \
+    FrameBufferedEvent
 
 
 class Device(mw_capture):
@@ -14,26 +15,32 @@ class Device(mw_capture):
         self.mw_refresh_device()
         self._channel = create_channel(self)
 
-        # Registerable events
-        self._signal_change_event = SignalChangeEvent()
-        self._signal_change_notification = self._register_event(self._signal_change_event)
-        self._frame_buffered_event = FrameBufferedEvent()
-        self._frame_buffered_notification = self._register_event(self._frame_buffered_event)
-        self._frame_buffering_event = FrameBufferingEvent()
-        self._frame_buffering_notification = self._register_event(self._frame_buffering_event)
-
         self._capture_event = CaptureEvent()
+
+        self._signal_change_event = cast(SignalChangeEvent, self._register_event(SignalChangeEvent()))
+        self._frame_buffered_event = cast(FrameBufferedEvent, self._register_event(FrameBufferedEvent()))
+        self._frame_buffering_event = cast(FrameBufferingEvent, self._register_event(FrameBufferingEvent()))
+
+    @property
+    def capture_event(self) -> CaptureEvent:
+        return self._capture_event
 
     @property
     def signal_change_event(self) -> SignalChangeEvent:
         return self._signal_change_event
 
     @property
-    def capture_event(self) -> CaptureEvent:
-        return self._capture_event
+    def frame_buffered_event(self) -> FrameBufferedEvent:
+        return self._frame_buffered_event
 
-    def _register_event(self, event: RegisterableEvent) -> Any:
-        return self.mw_register_notify(self.channel, event.win32_event, event.registration_token)
+    @property
+    def frame_buffering_event(self) -> FrameBufferingEvent:
+        return self._frame_buffering_event
+
+    def _register_event(self, event: RegisterableEvent) -> RegisterableEvent:
+        notification = self.mw_register_notify(self.channel, event.win32_event, event.registration_token)
+        event.register(notification)
+        return event
 
     @property
     def channel(self) -> int:

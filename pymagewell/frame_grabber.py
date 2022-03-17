@@ -1,3 +1,4 @@
+import time
 from ctypes import create_string_buffer, addressof, string_at
 from functools import singledispatchmethod
 from typing import Optional
@@ -8,9 +9,9 @@ from mwcapture.libmwcapture import MWCAP_VIDEO_DEINTERLACE_BLEND, MWCAP_VIDEO_AS
     MWCAP_VIDEO_COLOR_FORMAT_UNKNOWN, MWCAP_VIDEO_QUANTIZATION_UNKNOWN, MWCAP_VIDEO_SATURATION_UNKNOWN, MW_SUCCEEDED, \
     mwcap_video_frame_info, mw_device_time
 from pymagewell.device import Device
-from pymagewell.event import SignalChangeEvent, Event, TimerEvent
+from pymagewell.event import SignalChangeEvent, Event, TimerEvent, FrameBufferedEvent, FrameBufferingEvent
 from pymagewell.frame import Frame
-from pymagewell.settings import VideoSettings
+from pymagewell.settings import VideoSettings, GrabMode
 
 
 class FrameGrabber:
@@ -25,22 +26,33 @@ class FrameGrabber:
 
     def wait_and_grab(self) -> Frame:
         self._timer.schedule_timer_event()
-        frame = self._wait_for_frame_or_signal_change(timeout_ms=2000)
+        frame = self._wait_for_event(timeout_ms=2000)
         if frame is None:
             return self.wait_and_grab()
         else:
             return frame
 
-    def _wait_for_frame_or_signal_change(self, timeout_ms: int) -> Optional[Frame]:
-        win32_events = (self._timer.event.win32_event, self._device.signal_change_event.win32_event)
-        result = win32event.WaitForMultipleObjects(win32_events, False, timeout_ms)
+    def _wait_for_event(self, timeout_ms: int) -> Optional[Frame]:
+
+        if self._settings.grab_mode == GrabMode.TIMER:
+            grab_event = self._timer.event
+        elif self._settings.grab_mode == GrabMode.NORMAL:
+            grab_event = self._device.frame_buffered_event
+        elif self._settings.grab_mode == GrabMode.LOW_LATENCY:
+            grab_event = self._device.frame_buffering_event
+        else:
+            raise NotImplementedError("Invalid grab mode.")
+
+        events_to_wait_for = [grab_event, self._device.signal_change_event]
+        win32_events_to_wait_for = tuple([event.win32_event for event in events_to_wait_for])
+        result = win32event.WaitForMultipleObjects(win32_events_to_wait_for, False, timeout_ms)
         if result == 258:
             self.shutdown()
             raise IOError("Error: wait timed out")
         elif result == win32event.WAIT_OBJECT_0 + 0:
-            return self._handle_event(self._timer.event)
+            return self._handle_event(events_to_wait_for[0])
         elif result == win32event.WAIT_OBJECT_0 + 1:
-            return self._handle_event(self._device.signal_change_event)
+            return self._handle_event(events_to_wait_for[1])
         else:
             raise IOError(f"Wait for event failed: error code {result}")
 
@@ -50,7 +62,39 @@ class FrameGrabber:
 
     @_handle_event.register
     def _(self, event: TimerEvent) -> Optional[Frame]:
-        return self._grab_frame()
+        self._grab_frame()
+        self._wait_for_capture_to_complete(timeout_ms=2000)
+        if not self._is_whole_frame_acquired:
+            raise IOError("Only part of frame has been acquired")
+        return self._format_frame()
+
+    @_handle_event.register
+    def _(self, event: FrameBufferedEvent) -> Optional[Frame]:
+        frame_buffered_notification_status = self._device.frame_buffered_event.notification.get_status(self._device)
+        if not frame_buffered_notification_status.check_notification_source(
+                self._device.frame_buffered_event.registration_token):
+            raise IOError("Unexpected notification source")
+        self._grab_frame()
+        self._wait_for_capture_to_complete(timeout_ms=2000)
+        if not self._is_whole_frame_acquired:
+            raise IOError("Only part of frame has been acquired")
+        return self._format_frame()
+
+    @_handle_event.register
+    def _(self, event: FrameBufferingEvent) -> Optional[Frame]:
+        frame_buffering_notification_status = self._device.frame_buffering_event.notification.get_status(self._device)
+        if not frame_buffering_notification_status.check_notification_source(
+                self._device.frame_buffering_event.registration_token):
+            raise IOError("Unexpected notification source")
+        self._grab_frame()
+        self._wait_for_capture_to_complete(timeout_ms=2000)
+        poll_count = 0
+        while not self._is_whole_frame_acquired:
+            time.sleep(1e-3)
+            poll_count += 1
+            if poll_count > 1000:
+                raise IOError("Timed out while polling for low latency frame.")
+        return self._format_frame()
 
     @_handle_event.register
     def _(self, event: SignalChangeEvent) -> None:
@@ -69,7 +113,7 @@ class FrameGrabber:
             cx=self._settings.dimensions.x,
             cy=self._settings.dimensions.y,
             dwprocessswitchs=0,
-            cypartialnotify=0,
+            cypartialnotify=64 if self._settings.grab_mode == GrabMode.LOW_LATENCY else 0,
             hosdimage=0,
             posdrects=0,
             cosdrects=0,
@@ -90,11 +134,12 @@ class FrameGrabber:
         if result != MW_SUCCEEDED:
             print(f"Frame grab failed with error code {result}")
             return None
-        self._wait_for_capture_to_complete(timeout_ms=2000)
 
-        if not self._device.capture_status.bFrameCompleted:
-            raise IOError(f"Capture status says frame is not fully acquired yet")
+    @property
+    def _is_whole_frame_acquired(self) -> bool:
+        return self._device.capture_status.bFrameCompleted
 
+    def _format_frame(self) -> Frame:
         t = self._get_frame_timestamp(self._device.frame_info)
         string_buffer = string_at(self._frame_buffer, self._settings.image_size)
         frame = Frame(string_buffer, dimensions=self._settings.dimensions, timestamp=t)

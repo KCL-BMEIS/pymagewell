@@ -1,31 +1,6 @@
-from abc import ABC, abstractmethod
-from typing import Any
-
-import win32api
-import win32event
-
 from mwcapture.libmwcapture import MWCAP_NOTIFY_VIDEO_SIGNAL_CHANGE
-from pymagewell.notifications import MWCAP_NOTIFY_VIDEO_FRAME_BUFFERING, MWCAP_NOTIFY_VIDEO_FRAME_BUFFERED
-
-
-class Event:
-    def __init__(self):
-        self._win32_event = win32event.CreateEvent(None, False, False, None)
-
-    @property
-    def win32_event(self) -> Any:
-        return self._win32_event
-
-    def destroy(self) -> None:
-        win32api.CloseHandle(int(self.win32_event))
-        self._win32_event = 0
-
-
-class RegisterableEvent(Event, ABC):
-    @abstractmethod
-    @property
-    def registration_token(self) -> int:
-        raise NotImplementedError()
+from pymagewell.event_state import Event, RegisterableEvent
+from pymagewell.notifications import MWCAP_NOTIFY_VIDEO_FRAME_BUFFERING, MWCAP_NOTIFY_VIDEO_FRAME_BUFFERED, Notification
 
 
 class SignalChangeEvent(RegisterableEvent):

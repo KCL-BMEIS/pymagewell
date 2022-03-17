@@ -3,13 +3,12 @@ from functools import singledispatchmethod
 from typing import Optional
 
 import win32event
-from PIL import Image
 
 from mwcapture.libmwcapture import MWCAP_VIDEO_DEINTERLACE_BLEND, MWCAP_VIDEO_ASPECT_RATIO_CROPPING, \
     MWCAP_VIDEO_COLOR_FORMAT_UNKNOWN, MWCAP_VIDEO_QUANTIZATION_UNKNOWN, MWCAP_VIDEO_SATURATION_UNKNOWN, MW_SUCCEEDED, \
     mwcap_video_frame_info, mw_device_time
 from pymagewell.device import Device
-from pymagewell.event import SignalChangeEvent, CaptureEvent, Event, TimerEvent
+from pymagewell.event import SignalChangeEvent, Event, TimerEvent
 from pymagewell.frame import Frame
 from pymagewell.settings import VideoSettings
 
@@ -20,11 +19,9 @@ class FrameGrabber:
 
         self._device = device
         self._settings = settings
-        self._signal_change_event = SignalChangeEvent(self._device)
-        self._capture_event = CaptureEvent(self._device)
         self._timer = FrameTimer(self._device)
         self._frame_buffer = create_string_buffer(3840*2160*4)
-        self._device.start(self._capture_event.win32_event)
+        self._device.start()
 
     def wait_and_grab(self) -> Frame:
         self._timer.schedule_timer_event()
@@ -35,7 +32,7 @@ class FrameGrabber:
             return frame
 
     def _wait_for_frame_or_signal_change(self, timeout_ms: int) -> Optional[Frame]:
-        win32_events = (self._timer.event.win32_event, self._signal_change_event.win32_event)
+        win32_events = (self._timer.event.win32_event, self._device.signal_change_event.win32_event)
         result = win32event.WaitForMultipleObjects(win32_events, False, timeout_ms)
         if result == 258:
             self.shutdown()
@@ -43,7 +40,7 @@ class FrameGrabber:
         elif result == win32event.WAIT_OBJECT_0 + 0:
             return self._handle_event(self._timer.event)
         elif result == win32event.WAIT_OBJECT_0 + 1:
-            return self._handle_event(self._signal_change_event)
+            return self._handle_event(self._device.signal_change_event)
         else:
             raise IOError(f"Wait for event failed: error code {result}")
 
@@ -104,7 +101,7 @@ class FrameGrabber:
         return frame
 
     def _wait_for_capture_to_complete(self, timeout_ms: int) -> None:
-        result = win32event.WaitForSingleObject(self._capture_event.win32_event, timeout_ms)
+        result = win32event.WaitForSingleObject(self._device.capture_event.win32_event, timeout_ms)
         if result == 258:
             self.shutdown()
             raise IOError("Error: wait timed out")
@@ -119,16 +116,16 @@ class FrameGrabber:
 
     def shutdown(self) -> None:
         self._device.mw_stop_video_capture(self._device.channel)
+        self._device.shutdown()
         self._timer.shutdown()
-        self._signal_change_event.destroy()
-        self._capture_event.destroy()
 
 
 class FrameTimer:
     def __init__(self, device: Device):
         self._device = device
         self._frame_expire_time = get_device_time(self._device)
-        self._timer_event = TimerEvent(self._device)
+        self._timer_event = TimerEvent()
+        self._timer_notification = self._device.mw_register_timer(self._device.channel, self._timer_event.win32_event)
 
     @property
     def event(self) -> TimerEvent:
@@ -136,7 +133,7 @@ class FrameTimer:
 
     def schedule_timer_event(self):
         self._frame_expire_time.m_ll_device_time.value += self._device.signal_status.dwFrameDuration
-        result = self._device.mw_schedule_timer(self._device.channel, self._timer_event.registered_event,
+        result = self._device.mw_schedule_timer(self._device.channel, self._timer_notification,
                                                 self._frame_expire_time.m_ll_device_time)
         if result != MW_SUCCEEDED:
             raise IOError("Failed to schedule frame timer")

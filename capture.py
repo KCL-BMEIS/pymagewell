@@ -86,7 +86,7 @@ class CVideoCaptureThread(QThread):
         t_ret = MW_SUCCEEDED
         t_b_done = False
         while t_b_done == False:
-            t_ret = self.m_lib_capture.mw_start_video_capture(self.m_h_channel,self.m_h_event_capture)
+            t_ret = self.m_lib_capture.mw_start_video_capture(self.m_h_channel, self.m_h_event_capture)
             if t_ret != MW_SUCCEEDED:
                 break
             t_h_notify_signal = self.m_lib_capture.mw_register_notify(
@@ -127,7 +127,7 @@ class CVideoCaptureThread(QThread):
 
             while self.m_b_running:
                 t_ll_time_expire.m_ll_device_time.value += t_frame_duration
-                t_ret = self.m_lib_capture.mw_get_device_time(self.m_h_channel,t_ll_time_now)
+                t_ret = self.m_lib_capture.mw_get_device_time(self.m_h_channel, t_ll_time_now)
                 if t_ret != MW_SUCCEEDED:
                     continue
                 t_ret = self.m_lib_capture.mw_schedule_timer(self.m_h_channel,t_h_notify_timer,t_ll_time_expire.m_ll_device_time)
@@ -137,10 +137,13 @@ class CVideoCaptureThread(QThread):
                     self.m_h_event_timer,
                     self.m_h_event_notify]
                 t_events = tuple(t_array_event_notify)
-                t_wait_ret = win32event.WaitForMultipleObjects(t_events,False,win32event.INFINITE)
+                t_wait_ret = win32event.WaitForMultipleObjects(t_events, False, win32event.INFINITE)
+                print(f"Wait for multiple objects returned: {t_wait_ret}")
                 if t_wait_ret == win32event.WAIT_OBJECT_0 + 0:
+                    print("Event was EXIT event")
                     break
                 elif t_wait_ret == win32event.WAIT_OBJECT_0 + 1:
+                    print("Event was TIMER event")
                     t_ret = self.m_lib_capture.mw_get_video_buffer_info(self.m_h_channel,t_video_buffer_info)
                     if t_ret != MW_SUCCEEDED:
                         continue
@@ -214,7 +217,7 @@ class CVideoCaptureThread(QThread):
                         MWCAP_VIDEO_SATURATION_UNKNOWN
                     )
 
-                    win32event.WaitForSingleObject(self.m_h_event_capture,win32event.INFINITE)
+                    win32event.WaitForSingleObject(self.m_h_event_capture, win32event.INFINITE)
                     self.m_lib_capture.mw_get_device_time(self.m_h_channel, t_ll_time_now)
                     t_ret = self.m_lib_capture.mw_get_video_capture_status(self.m_h_channel,t_video_capture_status)
                     if self.m_callback != 0:
@@ -230,6 +233,7 @@ class CVideoCaptureThread(QThread):
                             t_ll_time_last.m_ll_device_time.value = t_ll_time_now.m_ll_device_time.value
                             t_frame_count = 0
                 elif t_wait_ret == win32event.WAIT_OBJECT_0 + 2:
+                    print("Event was NOTIFY event")
                     t_ret = self.m_lib_capture.mw_get_video_signal_status(self.m_h_channel,t_video_signal_status)
                     if t_ret != MW_SUCCEEDED:
                         continue

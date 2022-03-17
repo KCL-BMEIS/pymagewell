@@ -2,13 +2,12 @@
 from copy import copy
 from ctypes import create_unicode_buffer, create_string_buffer, addressof, string_at
 from dataclasses import dataclass
-from io import BytesIO
 from typing import Any, List, Optional
 
 from PIL import Image
 from win32 import win32api, win32event
 
-from mwcapture.libmwcapture import mw_capture, MWFOURCC_BGR24, fourcc_calc_min_stride, fourcc_calc_image_size, \
+from mwcapture.libmwcapture import mw_capture, fourcc_calc_min_stride, fourcc_calc_image_size, \
     MW_SUCCEEDED, mwcap_video_buffer_info, mwcap_video_frame_info, mw_video_signal_status, MWCAP_VIDEO_SIGNAL_NONE, \
     MWCAP_VIDEO_SIGNAL_UNSUPPORTED, MWCAP_VIDEO_SIGNAL_LOCKED, MWCAP_VIDEO_SIGNAL_LOCKING, \
     MWCAP_NOTIFY_VIDEO_SIGNAL_CHANGE, mw_notify_status, MWCAP_VIDEO_DEINTERLACE_BLEND, \

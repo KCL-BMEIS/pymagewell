@@ -6,6 +6,7 @@ from mwcapture.libmwcapture import mw_capture, mwcap_video_buffer_info, mwcap_vi
     MWCAP_VIDEO_SIGNAL_LOCKED, mw_video_capture_status
 from pymagewell.event import RegisterableEvent, SignalChangeEvent, CaptureEvent, FrameBufferingEvent, \
     FrameBufferedEvent
+from pymagewell.notifications import Notification
 
 
 class Device(mw_capture):
@@ -38,8 +39,8 @@ class Device(mw_capture):
         return self._frame_buffering_event
 
     def _register_event(self, event: RegisterableEvent) -> RegisterableEvent:
-        notification = self.mw_register_notify(self.channel, event.win32_event, event.registration_token)
-        event.register(notification)
+        notification_handle = self.mw_register_notify(self.channel, event.win32_event, event.registration_token)
+        event.register(Notification(notification_handle, self.channel))
         return event
 
     @property

@@ -35,7 +35,7 @@ class FrameGrabber:
     def _wait_for_event(self, timeout_ms: int) -> Optional[Frame]:
 
         if self._settings.grab_mode == GrabMode.TIMER:
-            grab_event = self._timer.event
+            grab_event: Event = self._timer.event
         elif self._settings.grab_mode == GrabMode.NORMAL:
             grab_event = self._device.frame_buffered_event
         elif self._settings.grab_mode == GrabMode.LOW_LATENCY:
@@ -70,10 +70,6 @@ class FrameGrabber:
 
     @_handle_event.register
     def _(self, event: FrameBufferedEvent) -> Optional[Frame]:
-        frame_buffered_notification_status = self._device.frame_buffered_event.notification.get_status(self._device)
-        if not frame_buffered_notification_status.check_notification_source(
-                self._device.frame_buffered_event.registration_token):
-            raise IOError("Unexpected notification source")
         self._grab_frame()
         self._wait_for_capture_to_complete(timeout_ms=2000)
         if not self._is_whole_frame_acquired:
@@ -82,25 +78,22 @@ class FrameGrabber:
 
     @_handle_event.register
     def _(self, event: FrameBufferingEvent) -> Optional[Frame]:
-        frame_buffering_notification_status = self._device.frame_buffering_event.notification.get_status(self._device)
-        if not frame_buffering_notification_status.check_notification_source(
-                self._device.frame_buffering_event.registration_token):
-            raise IOError("Unexpected notification source")
         self._grab_frame()
         self._wait_for_capture_to_complete(timeout_ms=2000)
         poll_count = 0
         while not self._is_whole_frame_acquired:
             time.sleep(1e-3)
             poll_count += 1
-            if poll_count > 1000:
+            if poll_count > 100:
                 raise IOError("Timed out while polling for low latency frame.")
+        print(f'Polled {poll_count} times')
         return self._format_frame()
 
     @_handle_event.register
     def _(self, event: SignalChangeEvent) -> None:
         print("Signal change detected")
 
-    def _grab_frame(self) -> Optional[Frame]:
+    def _grab_frame(self) -> None:
         result = self._device.mw_capture_video_frame_to_virtual_address_ex(
             hchannel=self._device.channel,
             iframe=self._device.buffer_info.iNewestBufferedFullFrame,
@@ -187,7 +180,7 @@ class FrameTimer:
         self._timer_event.destroy()
 
 
-def get_device_time(device: Device) -> Optional[mw_device_time]:
+def get_device_time(device: Device) -> mw_device_time:
     time = mw_device_time()
     result = device.mw_get_device_time(device.channel, time)
     if result != MW_SUCCEEDED:

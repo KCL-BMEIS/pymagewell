@@ -27,16 +27,20 @@ class RegisterableEvent(Event, ABC):
         self._notification: Optional[Notification] = None
 
     @property
-    def notification(self) -> Notification:
+    def notification(self) -> Optional[Notification]:
         return self._state.get_notification(self)
 
     def register(self, notification: Notification) -> None:
-        self._state.register(notification)
+        self._state = self._state.register(notification)
 
-    @abstractmethod
     @property
+    @abstractmethod
     def registration_token(self) -> int:
         raise NotImplementedError()
+
+    @property
+    def is_registered(self) -> bool:
+        return isinstance(self._state, Registered)
 
 
 class EventState(ABC):

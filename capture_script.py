@@ -1,14 +1,12 @@
-""" This file was translated from the cpp example CaptureByInput.cpp"""
-import time
-
 from pymagewell.device import Device
 from pymagewell.frame_grabber import FrameGrabber
-from pymagewell.settings import VideoSettings
+from pymagewell.settings import VideoSettings, GrabMode
 
 if __name__ == '__main__':
 
     device = Device()
     settings = VideoSettings()
+    settings.grab_mode = GrabMode.LOW_LATENCY
     grabber = FrameGrabber(device, settings)
 
     frames = []

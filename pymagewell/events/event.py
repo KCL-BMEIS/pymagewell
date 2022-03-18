@@ -35,7 +35,7 @@ class RegisterableEvent(Event, ABC):
 
     @property
     @abstractmethod
-    def registration_token(self) -> int:
+    def registration_token(self) -> Optional[int]:
         raise NotImplementedError()
 
     @property

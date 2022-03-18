@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from enum import Enum
 
-from mwcapture.libmwcapture import MWFOURCC_RGB24, fourcc_calc_min_stride, MWFOURCC_NV12, fourcc_calc_image_size
+from mwcapture.libmwcapture import fourcc_calc_min_stride, MWFOURCC_NV12, fourcc_calc_image_size, \
+    MWFOURCC_BGR24
 
 
 @dataclass
@@ -19,8 +20,9 @@ class GrabMode(Enum):
 @dataclass
 class VideoSettings:
     dimensions: Dimensions = Dimensions(1920, 1080)
-    color_format: int = MWFOURCC_RGB24  # Color format of captured video frames.
+    color_format: int = MWFOURCC_BGR24  # Color format of captured video frames.
     grab_mode: GrabMode = GrabMode.TIMER
+    low_latency_mode_notify_size: int = 64
 
     @property
     def min_stride(self) -> int:

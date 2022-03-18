@@ -3,39 +3,63 @@ from typing import cast
 
 from mwcapture.libmwcapture import mw_capture, mwcap_video_buffer_info, mwcap_video_frame_info, mw_video_signal_status, \
     MW_SUCCEEDED, MWCAP_VIDEO_SIGNAL_NONE, MWCAP_VIDEO_SIGNAL_UNSUPPORTED, MWCAP_VIDEO_SIGNAL_LOCKING, \
-    MWCAP_VIDEO_SIGNAL_LOCKED, mw_video_capture_status
-from pymagewell.event import RegisterableEvent, SignalChangeEvent, CaptureEvent, FrameBufferingEvent, \
-    FrameBufferedEvent
+    MWCAP_VIDEO_SIGNAL_LOCKED, mw_video_capture_status, mw_device_time
+from pymagewell.events.events import RegisterableEvent, SignalChangeEvent, FrameBufferingEvent, \
+    FrameBufferedEvent, FrameTransferCompleteEvent, TransferCompleteEvent, PartialFrameTransferCompleteEvent, TimerEvent
 from pymagewell.notifications import Notification
+from pymagewell.settings import GrabMode
 
 
-class Device(mw_capture):
-    def __init__(self):
-        super(Device, self).__init__()
+class ProCaptureDevice(mw_capture):
+    """ A ProCapture hardware device. Inherits from the mw_capture class provided by Magewell's python library.
+
+    ProCaptureDevice is responsible for constructing and registering events with the Magewell driver. It also provides
+     methods for accessing information about the video source connected to the device."""
+
+    def __init__(self, grab_mode: GrabMode):
+        """ grab_mode determines which events are registered with the driver."""
+        super(ProCaptureDevice, self).__init__()
+        self._grab_mode = grab_mode
         self.mw_capture_init_instance()
         self.mw_refresh_device()
         self._channel = create_channel(self)
 
-        self._capture_event = CaptureEvent()
-
         self._signal_change_event = cast(SignalChangeEvent, self._register_event(SignalChangeEvent()))
-        self._frame_buffered_event = cast(FrameBufferedEvent, self._register_event(FrameBufferedEvent()))
-        self._frame_buffering_event = cast(FrameBufferingEvent, self._register_event(FrameBufferingEvent()))
+
+        self._frame_buffered_event = FrameBufferedEvent()
+        self._frame_buffering_event = FrameBufferingEvent()
+
+        if self._grab_mode == GrabMode.NORMAL:
+            self._frame_buffered_event = cast(FrameBufferedEvent, self._register_event(self._frame_buffered_event))
+            self._transfer_complete_event: TransferCompleteEvent = FrameTransferCompleteEvent()
+
+        elif self._grab_mode == GrabMode.LOW_LATENCY:
+            self._frame_buffering_event = cast(FrameBufferingEvent, self._register_event(self._frame_buffering_event))
+            self._transfer_complete_event = PartialFrameTransferCompleteEvent()
+
+        elif self._grab_mode.TIMER:
+            self._transfer_complete_event = FrameTransferCompleteEvent()
 
     @property
-    def capture_event(self) -> CaptureEvent:
-        return self._capture_event
+    def transfer_complete_event(self) -> TransferCompleteEvent:
+        """ The event raised by the driver when a transfer (whole frame in normal mode, partial frame in low-latency
+        mode) is complete."""
+        return self._transfer_complete_event
 
     @property
     def signal_change_event(self) -> SignalChangeEvent:
+        """ The event raised by the driver when a source signal change is detected."""
         return self._signal_change_event
 
     @property
     def frame_buffered_event(self) -> FrameBufferedEvent:
+        """ The event raised by the driver in GrabMode.NORMAL when a frame has been acquired to on-device memory."""
         return self._frame_buffered_event
 
     @property
     def frame_buffering_event(self) -> FrameBufferingEvent:
+        """ The event raised by the driver in GrabMode.LOW_LATENCY when a frame has started to be acquired to on-device
+        memory."""
         return self._frame_buffering_event
 
     def _register_event(self, event: RegisterableEvent) -> RegisterableEvent:
@@ -43,8 +67,15 @@ class Device(mw_capture):
         event.register(Notification(notification_handle, self.channel))
         return event
 
+    def register_timer_event(self, event: TimerEvent) -> TimerEvent:
+        """ The FrameTimer class handles constructing TimerEvents and registering them here."""
+        notification_handle = self.mw_register_timer(self.channel, event.win32_event)
+        event.register(Notification(notification_handle, self.channel))
+        return event
+
     @property
     def channel(self) -> int:
+        """Handle to the devices 'channel', used by the frame grabbing function."""
         return self._channel
 
     @property
@@ -66,7 +97,8 @@ class Device(mw_capture):
         return signal_status
 
     def start(self) -> None:
-        start_capture_result = self.mw_start_video_capture(self.channel, self._capture_event.win32_event)
+        """ Starts the hardware acquiring frames"""
+        start_capture_result = self.mw_start_video_capture(self.channel, self.transfer_complete_event.win32_event)
         if start_capture_result != MW_SUCCEEDED:
             raise IOError(f"Start capture failed (error code {start_capture_result}).")
         # Check status of input signal
@@ -104,13 +136,24 @@ class Device(mw_capture):
 
     @property
     def capture_status(self) -> mw_video_capture_status:
+        """ Used to find out if a full frame has been transferred, or how many lines have been transferred, among other
+        things."""
         capture_status = mw_video_capture_status()
         self.mw_get_video_capture_status(self.channel, capture_status)
         return capture_status
 
+    def get_device_time(self) -> mw_device_time:
+        """ Read a timestamp from the device."""
+        time = mw_device_time()
+        result = self.mw_get_device_time(self.channel, time)
+        if result != MW_SUCCEEDED:
+            raise IOError("Failed to read time from device")
+        else:
+            return time
+
     def shutdown(self) -> None:
         self._signal_change_event.destroy()
-        self._capture_event.destroy()
+        self._transfer_complete_event.destroy()
         self._frame_buffered_event.destroy()
         self._frame_buffering_event.destroy()
 

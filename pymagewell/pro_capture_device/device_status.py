@@ -32,7 +32,7 @@ class SignalStatus:
     def from_mw_video_signal_status(cls, status: mw_video_signal_status) -> 'SignalStatus':
         return SignalStatus(
             state=SignalState(status.state),
-            start_position=ImageCoordinateInPixels(col=status.x, row=status.y),
+            start_position=ImageCoordinateInPixels(col=status.cols, row=status.rows),
             image_dimensions=ImageSizeInPixels(cols=status.cx, rows=status.cy),
             total_dimensions=ImageSizeInPixels(cols=status.cxTotal, rows=status.cyTotal),
             interlaced=bool(status.bInterlaced),
@@ -111,9 +111,9 @@ class FrameStatus:
         return FrameStatus(
             state=FrameState(info.state),
             interlaced=bool(info.bInterlaced),
-            segmented=FrameState(info.bSegmentedFrame),
+            segmented=bool(info.bSegmentedFrame),
             dimensions=ImageSizeInPixels(cols=info.cx, rows=info.cy),
             aspect_ratio=AspectRatio(hor=info.nAspectX, ver=info.nAspectY),
-            top_frame_time_code=FrameTimeCode.from_mwcap_smpte_timecode(info.aSMPTETimeCodes[0]),
-            bottom_frame_time_code=FrameTimeCode.from_mwcap_smpte_timecode(info.aSMPTETimeCodes[1])
+            top_frame_time_code=FrameTimeCode.from_mwcap_smpte_timecode(info.aSMPTETimeCodes[0:4]),
+            bottom_frame_time_code=FrameTimeCode.from_mwcap_smpte_timecode(info.aSMPTETimeCodes[4:])
         )

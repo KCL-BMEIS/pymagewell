@@ -91,7 +91,7 @@ class ProCaptureController:
         self._device.start_a_frame_transfer(self._transfer_buffer)
         self._wait_for_transfer_to_complete(timeout_ms=2000)
         t = time.perf_counter()
-        while self._device.transfer_status.num_lines_transferred < self._device.frame_dimensions.rows and (
+        while self._device.transfer_status.num_lines_transferred < self._device.frame_properties.dimensions.rows and (
                 time.perf_counter() - t) < 1:
             # this marks the buffer memory as free
             pass

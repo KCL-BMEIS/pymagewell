@@ -8,17 +8,19 @@ from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, Tr
 
 if __name__ == '__main__':
 
-    video_settings = ProCaptureSettings()
-    device = ProCaptureDevice(TransferMode.LOW_LATENCY)
-    grabber = ProCaptureController(device, video_settings)
+    device_settings = ProCaptureSettings()
+    device_settings.transfer_mode = TransferMode.LOW_LATENCY
+    device = ProCaptureDevice(device_settings)
+    frame_grabber = ProCaptureController(device)
 
     print('PRESS Q TO QUIT!')
 
     while True:
-        frame = grabber.transfer_when_ready()
+        frame = frame_grabber.transfer_when_ready()
         t = time.perf_counter()
         imshow("video", frame.as_array())
         if waitKey(1) & 0xFF == ord('q'):
             break
-        print(f"Frame took {time.perf_counter() - t} seconds to display on screen.")
-    grabber.shutdown()
+        # print(f"Frame took {time.perf_counter() - t} seconds to display on screen.")
+        # print(frame.timestamp)
+    frame_grabber.shutdown()

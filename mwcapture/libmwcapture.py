@@ -600,7 +600,7 @@ class mwcap_video_frame_info(Structure):
                 ('nAspectY',c_int32),
                 ('allFieldStartTimes',c_int64*2),
                 ('allFieldBufferedTimes',c_int64*2),
-                ('aSMPTETimeCodes',mwcap_smpte_timecode*2)] #crnb change from c_ubyte*8
+                ('aSMPTETimeCodes',c_ubyte*8)] #crnb change from c_ubyte*8
 
 '''
 typedef struct _MWCAP_AUDIO_CAPTURE_FRAME {

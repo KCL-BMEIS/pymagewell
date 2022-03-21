@@ -44,10 +44,10 @@ class FrameTimeCode:
     @classmethod
     def from_mwcap_smpte_timecode(cls, tc: mwcap_smpte_timecode) -> 'FrameTimeCode':
         return FrameTimeCode(
-            hour=int(tc.byHours),
-            minute=int(tc.byMinute),
-            second=int(tc.bySecond),
-            frame=int(tc.byFrame)
+            hour=int(tc[0]),
+            minute=int(tc[1]),
+            second=int(tc[2]),
+            frame=int(tc[3])
         )
 
 

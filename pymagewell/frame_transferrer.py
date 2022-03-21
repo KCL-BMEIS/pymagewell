@@ -11,10 +11,10 @@ from mwcapture.libmwcapture import MWCAP_VIDEO_DEINTERLACE_BLEND, MWCAP_VIDEO_AS
 from pymagewell.pro_capture_device import ProCaptureDevice
 from pymagewell.events.events import SignalChangeEvent, Event, TimerEvent, FrameBufferedEvent, FrameBufferingEvent
 from pymagewell.video_frame import VideoFrame
-from pymagewell.settings import VideoSettings, GrabMode
+from pymagewell.settings import VideoSettings, TransferMode
 
 
-class FrameGrabber:
+class FrameTransferrer:
     """ Controls the transfer of frames from ProCapture device to the PC."""
 
     def __init__(self, device: ProCaptureDevice, settings: VideoSettings):
@@ -24,24 +24,24 @@ class FrameGrabber:
         self._frame_buffer = create_string_buffer(3840*2160*4)
         self._device.start()
 
-    def wait_and_grab(self, timeout_ms: int = 2000) -> VideoFrame:
+    def transfer_when_ready(self, timeout_ms: int = 2000) -> VideoFrame:
         """ Wait for a frame to be ready for transfer, and then transfer it."""
-        if self._settings.grab_mode == GrabMode.TIMER:
+        if self._device.transfer_mode == TransferMode.TIMER:
             self._timer.schedule_timer_event()
         event = self._wait_for_event(timeout_ms=timeout_ms)
         frame = self._handle_event(event)
         if frame is None:
-            return self.wait_and_grab()
+            return self.transfer_when_ready()
         else:
             return frame
 
     def _wait_for_event(self, timeout_ms: int) -> Event:
         """ Wait for events to be raised by the driver, and return the raised event."""
-        if self._settings.grab_mode == GrabMode.TIMER:
+        if self._device.transfer_mode == TransferMode.TIMER:
             grab_event: Event = self._timer.event
-        elif self._settings.grab_mode == GrabMode.NORMAL:
+        elif self._device.transfer_mode == TransferMode.NORMAL:
             grab_event = self._device.frame_buffered_event
-        elif self._settings.grab_mode == GrabMode.LOW_LATENCY:
+        elif self._device.transfer_mode == TransferMode.LOW_LATENCY:
             grab_event = self._device.frame_buffering_event
         else:
             raise NotImplementedError("Invalid grab mode.")
@@ -68,7 +68,7 @@ class FrameGrabber:
     def _(self, event: TimerEvent) -> Optional[VideoFrame]:
         """ If timer event received, then whole frame is on device. This method transfers it to a buffer in PC memory,
         makes a copy, marks the buffer memory as free and then returns the copy."""
-        self._grab_frame()
+        self._transfer_frame()
         self._wait_for_transfer_to_complete(timeout_ms=2000)
         if not self._is_whole_frame_transferred:  # this marks the buffer memory as free
             raise IOError("Only part of frame has been acquired")
@@ -78,7 +78,7 @@ class FrameGrabber:
     def _(self, event: FrameBufferedEvent) -> Optional[VideoFrame]:
         """ If FrameBufferedEvent event received, then whole frame is on device. This method transfers it to a buffer in
         PC memory, makes a copy, marks the buffer memory as free and then returns the copy."""
-        self._grab_frame()
+        self._transfer_frame()
         self._wait_for_transfer_to_complete(timeout_ms=2000)
         if not self._is_whole_frame_transferred:  # this marks the buffer memory as free
             raise IOError("Only part of frame has been acquired")
@@ -90,7 +90,7 @@ class FrameGrabber:
         starts the transfer of the available lines to a buffer in PC memory while the acquisition is still happening.
          It then waits until all lines have been received (this query also frees the memory), copies the buffer contents
          and returns the copy."""
-        self._grab_frame()
+        self._transfer_frame()
         self._wait_for_transfer_to_complete(timeout_ms=2000)
         t = time.perf_counter()
         while self._num_lines_transferred < self._settings.dimensions.y and (time.perf_counter() - t) < 1:
@@ -104,10 +104,10 @@ class FrameGrabber:
         """ If a SignalChangeEvent is received, then the source signal has changed and no frame is available."""
         print("Frame grabber signal change detected")
 
-    def _grab_frame(self) -> None:
+    def _transfer_frame(self) -> None:
         """ Start the transfer of lines from the device to a buffer in PC memory."""
-        in_low_latency_mode = self._settings.grab_mode == GrabMode.LOW_LATENCY
-        notify_size = self._settings.low_latency_mode_notify_size if in_low_latency_mode else 0
+        in_low_latency_mode = self._device.transfer_mode == TransferMode.LOW_LATENCY
+        notify_size = self._device.n_scan_lines_per_chunk if in_low_latency_mode else 0
         result = self._device.mw_capture_video_frame_to_virtual_address_ex(
             hchannel=self._device.channel,
             iframe=self._device.buffer_info.iNewestBufferedFullFrame,
@@ -183,6 +183,8 @@ class FrameGrabber:
 
 
 class FrameTimer:
+    """ If the devices transfer mode it "Timer", this class is used to generate events triggering the transfer of frames
+    from the device."""
     def __init__(self, device: ProCaptureDevice):
         self._device = device
         self._frame_expire_time = self._device.get_device_time()

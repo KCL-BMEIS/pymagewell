@@ -1,3 +1,4 @@
+import math
 from ctypes import create_unicode_buffer
 from typing import cast
 
@@ -7,7 +8,16 @@ from mwcapture.libmwcapture import mw_capture, mwcap_video_buffer_info, mwcap_vi
 from pymagewell.events.events import RegisterableEvent, SignalChangeEvent, FrameBufferingEvent, \
     FrameBufferedEvent, FrameTransferCompleteEvent, TransferCompleteEvent, PartialFrameTransferCompleteEvent, TimerEvent
 from pymagewell.notifications import Notification
-from pymagewell.settings import GrabMode
+from pymagewell.settings import TransferMode
+
+
+def check_valid_chunk_size(n_scan_lines_per_chunk: int) -> int:
+    if n_scan_lines_per_chunk < 64:
+        raise ValueError('Minimum number of scan lines per chunk is 64.')
+    elif round(math.log2(n_scan_lines_per_chunk)) != math.log2(n_scan_lines_per_chunk):
+        raise ValueError('Number of scan lines per chunk must be a power of 2.')
+    else:
+        return n_scan_lines_per_chunk
 
 
 class ProCaptureDevice(mw_capture):
@@ -16,10 +26,11 @@ class ProCaptureDevice(mw_capture):
     ProCaptureDevice is responsible for constructing and registering events with the Magewell driver. It also provides
      methods for accessing information about the video source connected to the device."""
 
-    def __init__(self, grab_mode: GrabMode):
-        """ grab_mode determines which events are registered with the driver."""
+    def __init__(self, transfer_mode: TransferMode, n_scan_lines_per_chunk: int = 64):
+        """ transfer_mode determines which events are registered with the driver."""
         super(ProCaptureDevice, self).__init__()
-        self._grab_mode = grab_mode
+        self._transfer_mode = transfer_mode
+        self._n_scan_lines_per_chunk = check_valid_chunk_size(n_scan_lines_per_chunk)
         self.mw_capture_init_instance()
         self.mw_refresh_device()
         self._channel = create_channel(self)
@@ -29,16 +40,24 @@ class ProCaptureDevice(mw_capture):
         self._frame_buffered_event = FrameBufferedEvent()
         self._frame_buffering_event = FrameBufferingEvent()
 
-        if self._grab_mode == GrabMode.NORMAL:
+        if self._transfer_mode == TransferMode.NORMAL:
             self._frame_buffered_event = cast(FrameBufferedEvent, self._register_event(self._frame_buffered_event))
             self._transfer_complete_event: TransferCompleteEvent = FrameTransferCompleteEvent()
 
-        elif self._grab_mode == GrabMode.LOW_LATENCY:
+        elif self._transfer_mode == TransferMode.LOW_LATENCY:
             self._frame_buffering_event = cast(FrameBufferingEvent, self._register_event(self._frame_buffering_event))
             self._transfer_complete_event = PartialFrameTransferCompleteEvent()
 
-        elif self._grab_mode.TIMER:
+        elif self._transfer_mode.TIMER:
             self._transfer_complete_event = FrameTransferCompleteEvent()
+
+    @property
+    def n_scan_lines_per_chunk(self) -> int:
+        return self._n_scan_lines_per_chunk
+
+    @property
+    def transfer_mode(self) -> TransferMode:
+        return self._transfer_mode
 
     @property
     def transfer_complete_event(self) -> TransferCompleteEvent:
@@ -53,12 +72,12 @@ class ProCaptureDevice(mw_capture):
 
     @property
     def frame_buffered_event(self) -> FrameBufferedEvent:
-        """ The event raised by the driver in GrabMode.NORMAL when a frame has been acquired to on-device memory."""
+        """ The event raised by the driver in TransferMode.NORMAL when a frame has been acquired to on-device memory."""
         return self._frame_buffered_event
 
     @property
     def frame_buffering_event(self) -> FrameBufferingEvent:
-        """ The event raised by the driver in GrabMode.LOW_LATENCY when a frame has started to be acquired to on-device
+        """ The event raised by the driver in TransferMode.LOW_LATENCY when a frame has started to be acquired to on-device
         memory."""
         return self._frame_buffering_event
 

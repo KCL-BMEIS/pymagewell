@@ -11,18 +11,19 @@ class Dimensions:
     y: int
 
 
-class GrabMode(Enum):
+class TransferMode(Enum):
     TIMER = 0
+    """ Transferred are triggered by a timer event from the driver"""
     NORMAL = 1
+    """ Transfers are triggered by a notification received from the device when a frame has been grabbed"""
     LOW_LATENCY = 2
+    """ Transfers are triggered by a notification received from the device when a partial frame has been grabber"""
 
 
 @dataclass
 class VideoSettings:
     dimensions: Dimensions = Dimensions(1920, 1080)
     color_format: int = MWFOURCC_BGR24  # Color format of captured video frames.
-    grab_mode: GrabMode = GrabMode.TIMER
-    low_latency_mode_notify_size: int = 64
 
     @property
     def min_stride(self) -> int:

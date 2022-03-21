@@ -1,28 +1,26 @@
 import time
-from ctypes import create_string_buffer, addressof, string_at
+from ctypes import create_string_buffer, string_at
 from functools import singledispatchmethod
 from typing import Optional
 
 import win32event
 
-from mwcapture.libmwcapture import MWCAP_VIDEO_DEINTERLACE_BLEND, MWCAP_VIDEO_ASPECT_RATIO_CROPPING, \
-    MWCAP_VIDEO_COLOR_FORMAT_UNKNOWN, MWCAP_VIDEO_QUANTIZATION_UNKNOWN, MWCAP_VIDEO_SATURATION_UNKNOWN, MW_SUCCEEDED, \
+from mwcapture.libmwcapture import MW_SUCCEEDED, \
     mwcap_video_frame_info
 from pymagewell.pro_capture_device import ProCaptureDevice
 from pymagewell.events.events import SignalChangeEvent, Event, TimerEvent, FrameBufferedEvent, FrameBufferingEvent
 from pymagewell.video_frame import VideoFrame
-from pymagewell.settings import VideoSettings, TransferMode
+from pymagewell.pro_capture_device.device_settings import TransferMode
 
 
-class FrameTransferrer:
-    """ Controls the transfer of frames from ProCapture device to the PC."""
+class ProCaptureController:
+    """ Controls the transfer of frames from ProCaptureDevice to the PC."""
 
-    def __init__(self, device: ProCaptureDevice, settings: VideoSettings):
+    def __init__(self, device: ProCaptureDevice):
         self._device = device
-        self._settings = settings
         self._timer = FrameTimer(self._device)
-        self._frame_buffer = create_string_buffer(3840*2160*4)
-        self._device.start()
+        self._transfer_buffer = create_string_buffer(3840 * 2160 * 4)
+        self._device.start_grabbing()
 
     def transfer_when_ready(self, timeout_ms: int = 2000) -> VideoFrame:
         """ Wait for a frame to be ready for transfer, and then transfer it."""
@@ -36,7 +34,7 @@ class FrameTransferrer:
             return frame
 
     def _wait_for_event(self, timeout_ms: int) -> Event:
-        """ Wait for events to be raised by the driver, and return the raised event."""
+        """ Wait for events to be raised by the ProCaptureDevice or Timer, and return the raised event."""
         if self._device.transfer_mode == TransferMode.TIMER:
             grab_event: Event = self._timer.event
         elif self._device.transfer_mode == TransferMode.NORMAL:
@@ -68,9 +66,9 @@ class FrameTransferrer:
     def _(self, event: TimerEvent) -> Optional[VideoFrame]:
         """ If timer event received, then whole frame is on device. This method transfers it to a buffer in PC memory,
         makes a copy, marks the buffer memory as free and then returns the copy."""
-        self._transfer_frame()
+        self._device.start_a_frame_transfer(self._transfer_buffer)
         self._wait_for_transfer_to_complete(timeout_ms=2000)
-        if not self._is_whole_frame_transferred:  # this marks the buffer memory as free
+        if not self._device.transfer_status.whole_frame_transferred:  # this marks the buffer memory as free
             raise IOError("Only part of frame has been acquired")
         return self._format_frame()
 
@@ -78,9 +76,9 @@ class FrameTransferrer:
     def _(self, event: FrameBufferedEvent) -> Optional[VideoFrame]:
         """ If FrameBufferedEvent event received, then whole frame is on device. This method transfers it to a buffer in
         PC memory, makes a copy, marks the buffer memory as free and then returns the copy."""
-        self._transfer_frame()
+        self._device.start_a_frame_transfer(self._transfer_buffer)
         self._wait_for_transfer_to_complete(timeout_ms=2000)
-        if not self._is_whole_frame_transferred:  # this marks the buffer memory as free
+        if not self._device.transfer_status.whole_frame_transferred:  # this marks the buffer memory as free
             raise IOError("Only part of frame has been acquired")
         return self._format_frame()
 
@@ -90,10 +88,11 @@ class FrameTransferrer:
         starts the transfer of the available lines to a buffer in PC memory while the acquisition is still happening.
          It then waits until all lines have been received (this query also frees the memory), copies the buffer contents
          and returns the copy."""
-        self._transfer_frame()
+        self._device.start_a_frame_transfer(self._transfer_buffer)
         self._wait_for_transfer_to_complete(timeout_ms=2000)
         t = time.perf_counter()
-        while self._num_lines_transferred < self._settings.dimensions.y and (time.perf_counter() - t) < 1:
+        while self._device.transfer_status.num_lines_transferred < self._device.frame_dimensions.rows and (
+                time.perf_counter() - t) < 1:
             # this marks the buffer memory as free
             pass
 
@@ -104,60 +103,12 @@ class FrameTransferrer:
         """ If a SignalChangeEvent is received, then the source signal has changed and no frame is available."""
         print("Frame grabber signal change detected")
 
-    def _transfer_frame(self) -> None:
-        """ Start the transfer of lines from the device to a buffer in PC memory."""
-        in_low_latency_mode = self._device.transfer_mode == TransferMode.LOW_LATENCY
-        notify_size = self._device.n_scan_lines_per_chunk if in_low_latency_mode else 0
-        result = self._device.mw_capture_video_frame_to_virtual_address_ex(
-            hchannel=self._device.channel,
-            iframe=self._device.buffer_info.iNewestBufferedFullFrame,
-            pbframe=addressof(self._frame_buffer),
-            cbframe=self._settings.image_size,
-            cbstride=self._settings.min_stride,
-            bbottomup=False,  # this is True in the C++ example, but false in python example,
-            pvcontext=0,
-            dwfourcc=self._settings.color_format,  # color format of captured frames
-            cx=self._settings.dimensions.x,
-            cy=self._settings.dimensions.y,
-            dwprocessswitchs=0,
-            cypartialnotify=notify_size,
-            hosdimage=0,
-            posdrects=0,
-            cosdrects=0,
-            scontrast=100,
-            sbrightness=0,
-            ssaturation=100,
-            shue=0,
-            deinterlacemode=MWCAP_VIDEO_DEINTERLACE_BLEND,
-            aspectratioconvertmode=MWCAP_VIDEO_ASPECT_RATIO_CROPPING,
-            prectsrc=0,  # 0 in C++ example, but configured using CLIP settings in python example,
-            prectdest=0,
-            naspectx=0,
-            naspecty=0,
-            colorformat=MWCAP_VIDEO_COLOR_FORMAT_UNKNOWN,
-            quantrange=MWCAP_VIDEO_QUANTIZATION_UNKNOWN,
-            satrange=MWCAP_VIDEO_SATURATION_UNKNOWN
-        )
-        if result != MW_SUCCEEDED:
-            print(f"Frame grab failed with error code {result}")
-            return None
-
-    @property
-    def _is_whole_frame_transferred(self) -> bool:
-        """ This reading of the capture status apparently "frees memory source" """
-        return self._device.capture_status.bFrameCompleted
-
-    @property
-    def _num_lines_transferred(self) -> int:
-        """ This reading of the capture status apparently "frees memory source" """
-        return int(self._device.capture_status.cyCompleted)
-
     def _format_frame(self) -> VideoFrame:
         """ Copy the contents of the transfer buffer, and return it as a VideoFrame."""
-        t = self._get_frame_timestamp(self._device.frame_info)
+        t = self._device.frame_status.top_frame_time_code
         # Copy the acquired frame
-        string_buffer = string_at(self._frame_buffer, self._settings.image_size)
-        frame = VideoFrame(string_buffer, dimensions=self._settings.dimensions, timestamp=t)
+        string_buffer = string_at(self._transfer_buffer, self._device.frame_properties.size_in_bytes)
+        frame = VideoFrame(string_buffer, dimensions=self._device.frame_properties.dimensions, timestamp=t)
         return frame
 
     def _wait_for_transfer_to_complete(self, timeout_ms: int) -> None:
@@ -167,14 +118,6 @@ class FrameTransferrer:
         if result == 258:
             self.shutdown()
             raise IOError("Error: wait timed out")
-
-    def _get_frame_timestamp(self, frame_info: mwcap_video_frame_info) -> int:
-        time_now = self._device.get_device_time()
-        if self._device.signal_status.bInterlaced:
-            total_time = time_now.m_ll_device_time.value - frame_info.allFieldBufferedTimes[1]
-        else:
-            total_time = time_now.m_ll_device_time.value - frame_info.allFieldBufferedTimes[0]
-        return total_time
 
     def shutdown(self) -> None:
         self._device.stop()

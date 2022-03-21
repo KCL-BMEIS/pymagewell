@@ -3,14 +3,14 @@ import time
 from cv2 import imshow, waitKey
 
 from pymagewell.pro_capture_device import ProCaptureDevice
-from pymagewell.frame_transferrer import FrameTransferrer
-from pymagewell.settings import VideoSettings, TransferMode
+from pymagewell.pro_capture_controller import ProCaptureController
+from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, TransferMode
 
 if __name__ == '__main__':
 
-    video_settings = VideoSettings()
+    video_settings = ProCaptureSettings()
     device = ProCaptureDevice(TransferMode.LOW_LATENCY)
-    grabber = FrameTransferrer(device, video_settings)
+    grabber = ProCaptureController(device, video_settings)
 
     print('PRESS Q TO QUIT!')
 

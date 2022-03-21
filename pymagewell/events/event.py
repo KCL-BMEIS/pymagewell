@@ -4,7 +4,7 @@ from typing import Optional, Any
 import win32api
 import win32event
 
-from pymagewell.notifications import Notification
+from pymagewell.events.notification import Notification
 
 
 class Event:

@@ -430,8 +430,8 @@ MW_FAMILY_ID_USB_CAPTURE = 0x02
 '''
 typedef struct _MWCAP_VIDEO_SIGNAL_STATUS {
 	MWCAP_VIDEO_SIGNAL_STATE						state;									///<Defines the accessibility of this video signal
-	int												x;										///<Horizontal start position
-	int												y;										///<Vertical start position
+	int												cols;										///<Horizontal start position
+	int												rows;										///<Vertical start position
 	int												cx;										///<Image width
 	int												cy;										///<Image height
 	int												cxTotal;								///<Total width
@@ -450,8 +450,8 @@ typedef struct _MWCAP_VIDEO_SIGNAL_STATUS {
 class mw_video_signal_status(Structure):
     _pack_ = 1
     _fields_ = [('state',c_int32),
-                  ('x',c_int32),
-                  ('y',c_int32),
+                  ('cols',c_int32),
+                  ('rows',c_int32),
                   ('cx',c_int32),
                   ('cy',c_int32),
                   ('cxTotal',c_int32),
@@ -563,7 +563,7 @@ typedef struct _MWCAP_SMPTE_TIMECODE {
 '''
 class mwcap_smpte_timecode(Structure):
     _pack_ = 1
-    _fileds_ = [('byFrames',c_byte),
+    _fields_ = [('byFrames',c_byte),
                 ('bySeconds',c_byte),
                 ('byMinutes',c_byte),
                 ('byHours',c_byte)]
@@ -600,7 +600,7 @@ class mwcap_video_frame_info(Structure):
                 ('nAspectY',c_int32),
                 ('allFieldStartTimes',c_int64*2),
                 ('allFieldBufferedTimes',c_int64*2),
-                ('aSMPTETimeCodes',c_ubyte*8)] #mwcap_smpte_timecode*2
+                ('aSMPTETimeCodes',mwcap_smpte_timecode*2)] #crnb change from c_ubyte*8
 
 '''
 typedef struct _MWCAP_AUDIO_CAPTURE_FRAME {

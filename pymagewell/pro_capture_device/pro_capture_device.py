@@ -1,23 +1,23 @@
-import math
-from ctypes import create_unicode_buffer
+from ctypes import create_unicode_buffer, Array, c_char, addressof
+from dataclasses import dataclass
 from typing import cast
 
 from mwcapture.libmwcapture import mw_capture, mwcap_video_buffer_info, mwcap_video_frame_info, mw_video_signal_status, \
-    MW_SUCCEEDED, MWCAP_VIDEO_SIGNAL_NONE, MWCAP_VIDEO_SIGNAL_UNSUPPORTED, MWCAP_VIDEO_SIGNAL_LOCKING, \
-    MWCAP_VIDEO_SIGNAL_LOCKED, mw_video_capture_status, mw_device_time
+    MW_SUCCEEDED, mw_video_capture_status, mw_device_time, MWCAP_VIDEO_DEINTERLACE_BLEND, \
+    MWCAP_VIDEO_ASPECT_RATIO_CROPPING, MWCAP_VIDEO_COLOR_FORMAT_UNKNOWN, MWCAP_VIDEO_QUANTIZATION_UNKNOWN, \
+    MWCAP_VIDEO_SATURATION_UNKNOWN
+from pymagewell.pro_capture_device.device_status import TransferStatus, SignalStatus, SignalState, OnDeviceBufferStatus, \
+    FrameStatus
 from pymagewell.events.events import RegisterableEvent, SignalChangeEvent, FrameBufferingEvent, \
     FrameBufferedEvent, FrameTransferCompleteEvent, TransferCompleteEvent, PartialFrameTransferCompleteEvent, TimerEvent
-from pymagewell.notifications import Notification
-from pymagewell.settings import TransferMode
+from pymagewell.events.notification import Notification
+from pymagewell.pro_capture_device.device_settings import TransferMode, ProCaptureSettings, ImageSizeInPixels
 
 
-def check_valid_chunk_size(n_scan_lines_per_chunk: int) -> int:
-    if n_scan_lines_per_chunk < 64:
-        raise ValueError('Minimum number of scan lines per chunk is 64.')
-    elif round(math.log2(n_scan_lines_per_chunk)) != math.log2(n_scan_lines_per_chunk):
-        raise ValueError('Number of scan lines per chunk must be a power of 2.')
-    else:
-        return n_scan_lines_per_chunk
+@dataclass
+class FrameProperties:
+    dimensions: ImageSizeInPixels
+    size_in_bytes: int
 
 
 class ProCaptureDevice(mw_capture):
@@ -26,11 +26,12 @@ class ProCaptureDevice(mw_capture):
     ProCaptureDevice is responsible for constructing and registering events with the Magewell driver. It also provides
      methods for accessing information about the video source connected to the device."""
 
-    def __init__(self, transfer_mode: TransferMode, n_scan_lines_per_chunk: int = 64):
-        """ transfer_mode determines which events are registered with the driver."""
+    def __init__(self, settings: ProCaptureSettings):
+        """ transfer_mode determines which events the device will raise to trigger a ProCaptureController to start
+        transfer. n_lines_per_chunk sets the number lines after which a transfer will be triggered when
+        transfer_mode is set to LowLatency."""
         super(ProCaptureDevice, self).__init__()
-        self._transfer_mode = transfer_mode
-        self._n_scan_lines_per_chunk = check_valid_chunk_size(n_scan_lines_per_chunk)
+        self._settings = settings
         self.mw_capture_init_instance()
         self.mw_refresh_device()
         self._channel = create_channel(self)
@@ -40,24 +41,31 @@ class ProCaptureDevice(mw_capture):
         self._frame_buffered_event = FrameBufferedEvent()
         self._frame_buffering_event = FrameBufferingEvent()
 
-        if self._transfer_mode == TransferMode.NORMAL:
+        if self._settings.transfer_mode == TransferMode.NORMAL:
             self._frame_buffered_event = cast(FrameBufferedEvent, self._register_event(self._frame_buffered_event))
             self._transfer_complete_event: TransferCompleteEvent = FrameTransferCompleteEvent()
 
-        elif self._transfer_mode == TransferMode.LOW_LATENCY:
+        elif self._settings.transfer_mode == TransferMode.LOW_LATENCY:
             self._frame_buffering_event = cast(FrameBufferingEvent, self._register_event(self._frame_buffering_event))
             self._transfer_complete_event = PartialFrameTransferCompleteEvent()
 
-        elif self._transfer_mode.TIMER:
+        elif self._settings.transfer_mode.TIMER:
             self._transfer_complete_event = FrameTransferCompleteEvent()
 
     @property
-    def n_scan_lines_per_chunk(self) -> int:
-        return self._n_scan_lines_per_chunk
+    def num_lines_per_chunk(self) -> int:
+        return self._settings.num_lines_per_chunk
 
     @property
     def transfer_mode(self) -> TransferMode:
-        return self._transfer_mode
+        return self._settings.transfer_mode
+
+    @property
+    def frame_properties(self) -> FrameProperties:
+        return FrameProperties(
+            dimensions=self._settings.dimensions,
+            size_in_bytes=self._settings.image_size_in_bytes
+        )
 
     @property
     def transfer_complete_event(self) -> TransferCompleteEvent:
@@ -98,40 +106,40 @@ class ProCaptureDevice(mw_capture):
         return self._channel
 
     @property
-    def buffer_info(self) -> mwcap_video_buffer_info:
+    def buffer_status(self) -> OnDeviceBufferStatus:
         buffer_info = mwcap_video_buffer_info()
         self.mw_get_video_buffer_info(self.channel, buffer_info)
-        return buffer_info
+        return OnDeviceBufferStatus.from_mwcap_video_buffer_info(buffer_info)
 
     @property
-    def frame_info(self) -> mwcap_video_frame_info:
+    def frame_status(self) -> FrameStatus:
         frame_info = mwcap_video_frame_info()
-        self.mw_get_video_frame_info(self.channel, self.buffer_info.iNewestBufferedFullFrame, frame_info)
-        return frame_info
+        self.mw_get_video_frame_info(self.channel, self.buffer_status.last_buffered_frame_index, frame_info)
+        return FrameStatus.from_mwcap_video_frame_info(frame_info)
 
     @property
-    def signal_status(self) -> mw_video_signal_status:
-        signal_status = mw_video_signal_status()
-        self.mw_get_video_signal_status(self.channel, signal_status)
-        return signal_status
+    def signal_status(self) -> SignalStatus:
+        mw_signal_status = mw_video_signal_status()
+        self.mw_get_video_signal_status(self.channel, mw_signal_status)
+        return SignalStatus.from_mw_video_signal_status(mw_signal_status)
 
-    def start(self) -> None:
+    def start_grabbing(self) -> None:
         """ Starts the hardware acquiring frames"""
         start_capture_result = self.mw_start_video_capture(self.channel, self.transfer_complete_event.win32_event)
         if start_capture_result != MW_SUCCEEDED:
             raise IOError(f"Start capture failed (error code {start_capture_result}).")
         # Check status of input signal
-        if self.signal_status.state == MWCAP_VIDEO_SIGNAL_NONE:
+        if self.signal_status.state == SignalState.NONE:
             print("Input signal status: None")
-        elif self.signal_status.state == MWCAP_VIDEO_SIGNAL_UNSUPPORTED:
+        elif self.signal_status.state == SignalState.UNSUPPORTED:
             print("Input signal status: Unsupported")
-        elif self.signal_status.state == MWCAP_VIDEO_SIGNAL_LOCKING:
+        elif self.signal_status.state == SignalState.LOCKING:
             print("Input signal status: Locking")
-        elif self.signal_status.state == MWCAP_VIDEO_SIGNAL_LOCKED:
+        elif self.signal_status.state == SignalState.LOCKED:
             print("Input signal status: Locked")
 
         # Exit if signal not locked
-        if self.signal_status.state != MWCAP_VIDEO_SIGNAL_LOCKED:
+        if self.signal_status.state != SignalState.LOCKED:
             self.mw_stop_video_capture(self.channel)
             self.shutdown()
             raise IOError('Signal not locked.')
@@ -141,25 +149,26 @@ class ProCaptureDevice(mw_capture):
 
     @property
     def fps(self) -> float:
-        if self.signal_status.bInterlaced:
-            fps = 2e7 / self.signal_status.dwFrameDuration
+        if self.signal_status.interlaced:
+            fps = 2e7 / self.signal_status.frame_period_s
         else:
-            fps = 1e7 / self.signal_status.dwFrameDuration
+            fps = 1e7 / self.signal_status.frame_period_s
         return fps
 
     def print_signal_info(self) -> None:
-        print(f"Input signal resolution: {self.signal_status.cx} by {self.signal_status.cy}")
+        print(f"Input signal resolution: {self.signal_status.image_dimensions.cols} by "
+              f"{self.signal_status.image_dimensions.rows}")
         print(f"Input signal FPS: {self.fps}")
-        print(f"Input signal interlaced: {self.signal_status.bInterlaced}")
-        print(f"Input signal frame segmented: {self.signal_status.bSegmentedFrame}")
+        print(f"Input signal interlaced: {self.signal_status.interlaced}")
+        print(f"Input signal frame segmented: {self.signal_status.interlaced}")
 
     @property
-    def capture_status(self) -> mw_video_capture_status:
+    def transfer_status(self) -> TransferStatus:
         """ Used to find out if a full frame has been transferred, or how many lines have been transferred, among other
         things."""
-        capture_status = mw_video_capture_status()
-        self.mw_get_video_capture_status(self.channel, capture_status)
-        return capture_status
+        mw_capture_status = mw_video_capture_status()
+        self.mw_get_video_capture_status(self.channel, mw_capture_status)
+        return TransferStatus.from_mw_video_capture_status(mw_capture_status)
 
     def get_device_time(self) -> mw_device_time:
         """ Read a timestamp from the device."""
@@ -169,6 +178,44 @@ class ProCaptureDevice(mw_capture):
             raise IOError("Failed to read time from device")
         else:
             return time
+
+    def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> None:
+        """ Start the transfer of lines from the device to a buffer in PC memory."""
+        in_low_latency_mode = self.transfer_mode == TransferMode.LOW_LATENCY
+        notify_size = self.num_lines_per_chunk if in_low_latency_mode else 0
+        result = self.mw_capture_video_frame_to_virtual_address_ex(
+            hchannel=self.channel,
+            iframe=self.buffer_status.last_buffered_frame_index,
+            pbframe=addressof(frame_buffer),
+            cbframe=self._settings.image_size_in_bytes,
+            cbstride=self._settings.min_stride,
+            bbottomup=False,  # this is True in the C++ example, but false in python example,
+            pvcontext=0,
+            dwfourcc=self._settings.color_format,  # color format of captured frames
+            cx=self._settings.dimensions.cols,
+            cy=self._settings.dimensions.rows,
+            dwprocessswitchs=0,
+            cypartialnotify=notify_size,
+            hosdimage=0,
+            posdrects=0,
+            cosdrects=0,
+            scontrast=100,
+            sbrightness=0,
+            ssaturation=100,
+            shue=0,
+            deinterlacemode=MWCAP_VIDEO_DEINTERLACE_BLEND,
+            aspectratioconvertmode=MWCAP_VIDEO_ASPECT_RATIO_CROPPING,
+            prectsrc=0,  # 0 in C++ example, but configured using CLIP settings in python example,
+            prectdest=0,
+            naspectx=0,
+            naspecty=0,
+            colorformat=MWCAP_VIDEO_COLOR_FORMAT_UNKNOWN,
+            quantrange=MWCAP_VIDEO_QUANTIZATION_UNKNOWN,
+            satrange=MWCAP_VIDEO_SATURATION_UNKNOWN
+        )
+        if result != MW_SUCCEEDED:
+            print(f"Frame grab failed with error code {result}")
+            return None
 
     def shutdown(self) -> None:
         self._signal_change_event.destroy()

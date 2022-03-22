@@ -1,6 +1,7 @@
 import math
 from ctypes import Structure, c_byte
 from dataclasses import dataclass
+from datetime import datetime
 from enum import Enum
 
 from mwcapture.libmwcapture import fourcc_calc_min_stride, MWFOURCC_NV12, fourcc_calc_image_size, \
@@ -48,6 +49,17 @@ class FrameTimeCode:
             minute=int(tc[1]),
             second=int(tc[2]),
             frame=int(tc[3])
+        )
+
+    @classmethod
+    def now(cls, frame_period_s: float) -> 'FrameTimeCode':
+        microseconds_per_frame = frame_period_s * 1e6
+        now = datetime.now()
+        return FrameTimeCode(
+            hour=now.hour,
+            minute=now.minute,
+            second=now.second,
+            frame=int(round(now.microsecond / microseconds_per_frame))
         )
 
 

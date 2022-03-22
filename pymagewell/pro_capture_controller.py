@@ -5,8 +5,6 @@ from typing import Optional
 
 import win32event
 
-from mwcapture.libmwcapture import MW_SUCCEEDED, \
-    mwcap_video_frame_info
 from pymagewell.pro_capture_device import ProCaptureDevice
 from pymagewell.events.events import SignalChangeEvent, Event, TimerEvent, FrameBufferedEvent, FrameBufferingEvent
 from pymagewell.video_frame import VideoFrame
@@ -18,14 +16,13 @@ class ProCaptureController:
 
     def __init__(self, device: ProCaptureDevice):
         self._device = device
-        self._timer = FrameTimer(self._device)
         self._transfer_buffer = create_string_buffer(3840 * 2160 * 4)
         self._device.start_grabbing()
 
     def transfer_when_ready(self, timeout_ms: int = 2000) -> VideoFrame:
         """ Wait for a frame to be ready for transfer, and then transfer it."""
         if self._device.transfer_mode == TransferMode.TIMER:
-            self._timer.schedule_timer_event()
+            self._device.schedule_timer_event()
         event = self._wait_for_event(timeout_ms=timeout_ms)
         frame = self._handle_event(event)
         if frame is None:
@@ -36,15 +33,15 @@ class ProCaptureController:
     def _wait_for_event(self, timeout_ms: int) -> Event:
         """ Wait for events to be raised by the ProCaptureDevice or Timer, and return the raised event."""
         if self._device.transfer_mode == TransferMode.TIMER:
-            grab_event: Event = self._timer.event
+            grab_event: Event = self._device.events.timer_event
         elif self._device.transfer_mode == TransferMode.NORMAL:
-            grab_event = self._device.frame_buffered_event
+            grab_event = self._device.events.frame_buffered
         elif self._device.transfer_mode == TransferMode.LOW_LATENCY:
-            grab_event = self._device.frame_buffering_event
+            grab_event = self._device.events.frame_buffering
         else:
             raise NotImplementedError("Invalid grab mode.")
 
-        events_to_wait_for = [grab_event, self._device.signal_change_event]
+        events_to_wait_for = [grab_event, self._device.events.signal_change]
         win32_events_to_wait_for = tuple([event.win32_event for event in events_to_wait_for])
         result = win32event.WaitForMultipleObjects(win32_events_to_wait_for, False, timeout_ms)
         if result == 258:
@@ -114,38 +111,11 @@ class ProCaptureController:
     def _wait_for_transfer_to_complete(self, timeout_ms: int) -> None:
         """ Waits until a whole frame (or chunk of a frame in low latency mode) has been transferred to the buffer in
         PC memory."""
-        result = win32event.WaitForSingleObject(self._device.transfer_complete_event.win32_event, timeout_ms)
+        result = win32event.WaitForSingleObject(self._device.events.transfer_complete.win32_event, timeout_ms)
         if result == 258:
             self.shutdown()
             raise IOError("Error: wait timed out")
 
     def shutdown(self) -> None:
-        self._device.stop()
+        self._device.stop_grabbing()
         self._device.shutdown()
-        self._timer.shutdown()
-
-
-class FrameTimer:
-    """ If the devices transfer mode it "Timer", this class is used to generate events triggering the transfer of frames
-    from the device."""
-    def __init__(self, device: ProCaptureDevice):
-        self._device = device
-        self._frame_expire_time = self._device.get_device_time()
-        self._timer_event = self._device.register_timer_event(TimerEvent())
-
-    @property
-    def event(self) -> TimerEvent:
-        return self._timer_event
-
-    def schedule_timer_event(self):
-        self._frame_expire_time.m_ll_device_time.value += self._device.signal_status.dwFrameDuration
-        if self._timer_event.is_registered:
-            result = self._device.mw_schedule_timer(self._device.channel, self._timer_event.notification,
-                                                    self._frame_expire_time.m_ll_device_time)
-        else:
-            raise IOError("Timer event not registered with device.")
-        if result != MW_SUCCEEDED:
-            raise IOError("Failed to schedule frame timer")
-
-    def shutdown(self) -> None:
-        self._timer_event.destroy()

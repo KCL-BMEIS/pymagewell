@@ -5,12 +5,13 @@ from cv2 import imshow, waitKey
 from pymagewell.pro_capture_device import ProCaptureDevice
 from pymagewell.pro_capture_controller import ProCaptureController
 from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, TransferMode
+from pymagewell.pro_capture_device.mock_pro_capture_device import MockProCaptureDevice
 
 if __name__ == '__main__':
 
     device_settings = ProCaptureSettings()
-    device_settings.transfer_mode = TransferMode.LOW_LATENCY
-    device = ProCaptureDevice(device_settings)
+    device_settings.transfer_mode = TransferMode.TIMER
+    device = MockProCaptureDevice(device_settings)
     frame_grabber = ProCaptureController(device)
 
     print('PRESS Q TO QUIT!')

@@ -7,6 +7,8 @@ import win32event
 
 from pymagewell.pro_capture_device import ProCaptureDevice
 from pymagewell.events.events import SignalChangeEvent, Event, TimerEvent, FrameBufferedEvent, FrameBufferingEvent
+from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface
+from pymagewell.pro_capture_device.pro_capture_device_impl import ProCaptureDeviceImpl
 from pymagewell.video_frame import VideoFrame
 from pymagewell.pro_capture_device.device_settings import TransferMode
 
@@ -14,7 +16,7 @@ from pymagewell.pro_capture_device.device_settings import TransferMode
 class ProCaptureController:
     """ Controls the transfer of frames from ProCaptureDevice to the PC."""
 
-    def __init__(self, device: ProCaptureDevice):
+    def __init__(self, device: ProCaptureDeviceInterface):
         self._device = device
         self._transfer_buffer = create_string_buffer(3840 * 2160 * 4)
         self._device.start_grabbing()

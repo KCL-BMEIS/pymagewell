@@ -1,5 +1,4 @@
 from ctypes import create_unicode_buffer, Array, c_char, addressof
-from dataclasses import dataclass
 from typing import cast, Optional
 
 from mwcapture.libmwcapture import mw_capture, mwcap_video_buffer_info, mwcap_video_frame_info, mw_video_signal_status, \
@@ -11,14 +10,9 @@ from pymagewell.pro_capture_device.device_status import TransferStatus, SignalSt
 from pymagewell.events.events import RegisterableEvent, SignalChangeEvent, FrameBufferingEvent, \
     FrameBufferedEvent, FrameTransferCompleteEvent, TransferCompleteEvent, PartialFrameTransferCompleteEvent, TimerEvent
 from pymagewell.events.notification import Notification
-from pymagewell.pro_capture_device.device_settings import TransferMode, ProCaptureSettings, ImageSizeInPixels
-from pymagewell.pro_capture_device.pro_capture_device_impl import ProCaptureDeviceImpl, ProCaptureEvents
-
-
-@dataclass
-class FrameProperties:
-    dimensions: ImageSizeInPixels
-    size_in_bytes: int
+from pymagewell.pro_capture_device.device_settings import TransferMode, ProCaptureSettings
+from pymagewell.pro_capture_device.pro_capture_device_impl import ProCaptureDeviceImpl
+from pymagewell.pro_capture_device.device_interface import ProCaptureEvents
 
 
 class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):

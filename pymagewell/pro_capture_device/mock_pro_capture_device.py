@@ -3,6 +3,7 @@ from threading import Thread
 from time import monotonic, sleep
 from typing import Optional
 
+import win32event
 from numpy import random
 
 from pymagewell.events.events import TransferCompleteEvent, SignalChangeEvent, FrameBufferedEvent, FrameBufferingEvent, \
@@ -11,7 +12,8 @@ from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, Im
     FrameTimeCode, ImageCoordinateInPixels
 from pymagewell.pro_capture_device.device_status import TransferStatus, SignalStatus, FrameStatus, OnDeviceBufferStatus, \
     FrameState, SignalState
-from pymagewell.pro_capture_device.pro_capture_device_impl import ProCaptureDeviceImpl, ProCaptureEvents
+from pymagewell.pro_capture_device.pro_capture_device_impl import ProCaptureDeviceImpl
+from pymagewell.pro_capture_device.device_interface import ProCaptureEvents
 
 MOCK_RESOLUTION = ImageSizeInPixels(cols=1920, rows=1080)
 MOCK_ASPECT_RATIO = AspectRatio(hor=16, ver=9)
@@ -81,7 +83,8 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
         return TransferStatus(
             whole_frame_transferred=True,
             num_lines_transferred=MOCK_RESOLUTION.rows,
-            num_lines_transferred_previously=MOCK_RESOLUTION.rows
+            num_lines_transferred_previously=MOCK_RESOLUTION.rows,
+            frame_index=0
         )
 
     def start_grabbing(self) -> None:
@@ -91,7 +94,8 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
         self._is_grabbing = False
 
     def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> None:
-        frame_buffer[:, :] = random.randn(MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols)
+        frame_buffer = random.rand(MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols)
+        win32event.SetEvent(self.events.transfer_complete.win32_event)
 
     def shutdown(self) -> None:
         self._is_grabbing = False
@@ -100,12 +104,13 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
 class MockTimer:
 
     def __init__(self, timer_event: TimerEvent, rate_hz: float):
-        self._timer_event_thread = Thread(target=self._wait_and_generate)
         self._last_event_time: Optional[float] = None
+        self._timer_event_thread = Thread(target=self._wait_and_generate)
         self._rate_hz = rate_hz
         self._timer_event = timer_event
 
     def schedule_event(self) -> None:
+        self._timer_event_thread = Thread(target=self._wait_and_generate)
         self._timer_event_thread.start()
 
     def _wait_and_generate(self):
@@ -114,7 +119,7 @@ class MockTimer:
             time_until_next_event = (1.0 / self._rate_hz) - time_since_last_event
             if time_until_next_event > 0:
                 sleep(time_until_next_event)
-        self._timer_event.win32_event.set()
+        win32event.SetEvent(self._timer_event.win32_event)
 
 
 

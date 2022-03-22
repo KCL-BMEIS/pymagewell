@@ -1,27 +1,7 @@
 from abc import ABC
-from dataclasses import dataclass
 
-from pymagewell.events.events import TransferCompleteEvent, SignalChangeEvent, FrameBufferedEvent, FrameBufferingEvent, \
-    TimerEvent
-from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface
+from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface, FrameProperties
 from pymagewell.pro_capture_device.device_settings import TransferMode, ProCaptureSettings
-from pymagewell.pro_capture_device.pro_capture_device import FrameProperties
-
-
-@dataclass
-class ProCaptureEvents:
-    transfer_complete: TransferCompleteEvent
-    """ The event raised by the driver when a transfer (whole frame in normal mode, partial frame in low-latency
-    mode) is complete."""
-    signal_change: SignalChangeEvent
-    """ The event raised by the driver when a source signal change is detected."""
-    frame_buffered: FrameBufferedEvent
-    """ The event raised by the driver in TransferMode.NORMAL when a frame has been acquired to on-device memory."""
-    frame_buffering: FrameBufferingEvent
-    """ The event raised by the driver in TransferMode.LOW_LATENCY when a frame has started to be acquired to on-device
-    memory."""
-    timer_event: TimerEvent
-    """ The event raised by the driver in TransferMode.TIMER when a frame has been acquired to on-device memory."""
 
 
 class ProCaptureDeviceImpl(ProCaptureDeviceInterface, ABC):
@@ -29,7 +9,6 @@ class ProCaptureDeviceImpl(ProCaptureDeviceInterface, ABC):
     of the Events system, and therefore are common to Mock and Real implementations of the interface."""
 
     def __init__(self, settings: ProCaptureSettings):
-        super(ProCaptureDeviceImpl, self).__init__()
         self._settings = settings
 
     @property

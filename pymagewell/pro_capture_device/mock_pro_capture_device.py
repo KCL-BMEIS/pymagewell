@@ -8,6 +8,7 @@ from numpy import random, uint8
 
 from pymagewell.events.events import TransferCompleteEvent, SignalChangeEvent, FrameBufferedEvent, FrameBufferingEvent, \
     TimerEvent
+from pymagewell.events.notification import Notification
 from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, ImageSizeInPixels, AspectRatio, \
     FrameTimeCode, ImageCoordinateInPixels, TransferMode
 from pymagewell.pro_capture_device.device_status import TransferStatus, SignalStatus, FrameStatus, OnDeviceBufferStatus, \
@@ -33,6 +34,9 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
             frame_buffering=FrameBufferingEvent(),
             timer_event=TimerEvent()
         )
+        self._events.signal_change.register(Notification(0, 0))
+        self._events.timer_event.register(Notification(0, 0))
+
         self._mock_timer = MockTimer(self._events.timer_event, MOCK_FRAME_RATE_HZ)
 
     @property

@@ -1,4 +1,3 @@
-from datetime import time, datetime
 from unittest import TestCase
 
 from pymagewell.pro_capture_controller import ProCaptureController
@@ -22,11 +21,11 @@ class TestEvents(TestCase):
     def tearDown(self) -> None:
         pass
 
-    def test_frame_timestamp(self) -> None:
-        frame = self._controller.transfer_when_ready(timeout_ms=1000)
-        seconds_since_frame = (datetime.now() - frame.timestamp.as_datetime(
-            self._device.signal_status.frame_period_s)).total_seconds()
-        self.assertTrue(seconds_since_frame < 0.25)
+    # def test_frame_timestamp(self) -> None:
+    #     frame = self._controller.transfer_when_ready(timeout_ms=1000)
+    #     seconds_since_frame = (datetime.now() - frame.timestamp.as_datetime(
+    #         self._device.signal_status.frame_period_s)).total_seconds()
+    #     self.assertTrue(seconds_since_frame < 0.25)
 
     def test_frame_size(self) -> None:
         frame = self._controller.transfer_when_ready(timeout_ms=1000)

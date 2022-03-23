@@ -1,15 +1,15 @@
 from ctypes import Array, c_char
+from operator import mod
 from threading import Thread
 from time import monotonic, sleep
 from typing import Optional
 
-import win32event
-from numpy import random
+from numpy import random, uint8
 
 from pymagewell.events.events import TransferCompleteEvent, SignalChangeEvent, FrameBufferedEvent, FrameBufferingEvent, \
     TimerEvent
 from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, ImageSizeInPixels, AspectRatio, \
-    FrameTimeCode, ImageCoordinateInPixels
+    FrameTimeCode, ImageCoordinateInPixels, TransferMode
 from pymagewell.pro_capture_device.device_status import TransferStatus, SignalStatus, FrameStatus, OnDeviceBufferStatus, \
     FrameState, SignalState
 from pymagewell.pro_capture_device.pro_capture_device_impl import ProCaptureDeviceImpl
@@ -22,6 +22,8 @@ MOCK_FRAME_RATE_HZ = 60.0
 
 class MockProCaptureDevice(ProCaptureDeviceImpl):
     def __init__(self, settings: ProCaptureSettings):
+        if settings.transfer_mode != TransferMode.TIMER:
+            raise ValueError("MockProCaptureDevice only works in Timer transfer mode.")
         super().__init__(settings)
         self._is_grabbing = False
         self._events = ProCaptureEvents(
@@ -94,8 +96,9 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
         self._is_grabbing = False
 
     def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> None:
-        frame_buffer = random.rand(MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols)
-        win32event.SetEvent(self.events.transfer_complete.win32_event)
+        random_ints = (255 * random.rand(self.frame_properties.size_in_bytes)).astype(uint8).tobytes()
+        frame_buffer[:self.frame_properties.size_in_bytes] = random_ints
+        self.events.transfer_complete.set()
 
     def shutdown(self) -> None:
         self._is_grabbing = False
@@ -108,6 +111,7 @@ class MockTimer:
         self._timer_event_thread = Thread(target=self._wait_and_generate)
         self._rate_hz = rate_hz
         self._timer_event = timer_event
+        self._event_counter = 0
 
     def schedule_event(self) -> None:
         self._timer_event_thread = Thread(target=self._wait_and_generate)
@@ -119,7 +123,12 @@ class MockTimer:
             time_until_next_event = (1.0 / self._rate_hz) - time_since_last_event
             if time_until_next_event > 0:
                 sleep(time_until_next_event)
-        win32event.SetEvent(self._timer_event.win32_event)
+            elif mod(self._event_counter, 10) == 0:
+                print(f"Mock frame rate is {1 / time_since_last_event:.3f} Hz, "
+                      f"which is lower than the requested {self._rate_hz} Hz.")
+        self._last_event_time = monotonic()
+        self._timer_event.set()
+        self._event_counter += 1
 
 
 

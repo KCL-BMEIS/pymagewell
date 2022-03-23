@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Optional, Any
+from typing import Optional, Any, List
 
 import win32api
 import win32event
@@ -14,6 +14,9 @@ class Event:
     @property
     def win32_event(self) -> Any:
         return self._win32_event
+
+    def set(self) -> None:
+        win32event.SetEvent(self.win32_event)
 
     def destroy(self) -> None:
         win32api.CloseHandle(int(self.win32_event))
@@ -70,3 +73,26 @@ class Unregistered(EventState):
 
     def get_notification(self, event: Event) -> Optional[Notification]:
         return None
+
+
+class WaitForEventTimeout(IOError):
+    pass
+
+
+def wait_for_events(events: List[Event], timeout_ms: int) -> Event:
+    result = win32event.WaitForMultipleObjects(tuple([event.win32_event for event in events]), False, timeout_ms)
+    if result == 258:
+        raise WaitForEventTimeout("Error: wait timed out")
+    elif result == win32event.WAIT_OBJECT_0 + 0:
+        return events[0]
+    elif result == win32event.WAIT_OBJECT_0 + 1:
+        return events[1]
+    else:
+        raise IOError(f"Wait for event failed: error code {result}")
+
+
+def wait_for_event(event: Event, timeout_ms: int) -> None:
+    result = win32event.WaitForSingleObject(event.win32_event, timeout_ms)
+    if result == 258:
+        raise WaitForEventTimeout("Error: wait timed out")
+

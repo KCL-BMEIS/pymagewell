@@ -1,5 +1,4 @@
 import math
-from ctypes import Structure, c_byte
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -61,6 +60,12 @@ class FrameTimeCode:
             second=now.second,
             frame=int(round(now.microsecond / microseconds_per_frame))
         )
+
+    def as_datetime(self, frame_period_s: float) -> datetime:
+        microseconds_per_frame = frame_period_s * 1e6
+        now = datetime.now()
+        return datetime(year=now.year, month=now.month, day=now.day, hour=self.hour, minute=self.minute,
+                        second=self.second, microsecond=int(self.frame * microseconds_per_frame))
 
 
 @dataclass

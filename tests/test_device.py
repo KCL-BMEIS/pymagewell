@@ -1,3 +1,5 @@
+from copy import copy
+from ctypes import create_string_buffer
 from time import perf_counter
 from unittest import TestCase
 
@@ -48,8 +50,12 @@ class TestEvents(TestCase):
         time_waited = perf_counter() - start_time
         self.assertTrue((time_waited > expected_wait_time) and (time_waited < expected_wait_time * 2))
 
-    # def test_frame_transfer(self) -> None:
-    #     self._device.s
-
-
-
+    def test_frame_transfer(self) -> None:
+        transfer_buffer = create_string_buffer(3840 * 2160 * 4)
+        self._device.start_grabbing()
+        buffer_before = copy(transfer_buffer)
+        wait_for_event(self._device.events.timer_event, timeout_ms=1000)
+        self._device.start_a_frame_transfer(transfer_buffer)
+        wait_for_event(self._device.events.transfer_complete, timeout_ms=1000)
+        buffer_after = copy(transfer_buffer)
+        self.assertFalse(buffer_before == buffer_after)

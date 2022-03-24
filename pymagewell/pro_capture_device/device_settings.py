@@ -10,9 +10,94 @@ from mwcapture.libmwcapture import (
     fourcc_calc_image_size,
     MWFOURCC_BGR24,
     mwcap_smpte_timecode,
+    MWFOURCC_UNK,
+    MWFOURCC_GREY,
+    MWFOURCC_Y800,
+    MWFOURCC_BGRA,
+    MWFOURCC_Y8,
+    MWFOURCC_Y16,
+    MWFOURCC_RGB15,
+    MWFOURCC_RGB16,
+    MWFOURCC_RGB24,
+    MWFOURCC_RGBA,
+    MWFOURCC_ARGB,
+    MWFOURCC_BGR15,
+    MWFOURCC_BGR16,
+    MWFOURCC_ABGR,
+    MWFOURCC_NV16,
+    MWFOURCC_NV61,
+    MWFOURCC_I422,
+    MWFOURCC_YV16,
+    MWFOURCC_YUY2,
+    MWFOURCC_YUYV,
+    MWFOURCC_UYVY,
+    MWFOURCC_BGR10,
+    MWFOURCC_RGB10,
+    MWFOURCC_V410,
+    MWFOURCC_Y410,
+    MWFOURCC_V210,
+    MWFOURCC_V408,
+    MWFOURCC_UYVA,
+    MWFOURCC_AYUV,
+    MWFOURCC_V308,
+    MWFOURCC_IYU2,
+    MWFOURCC_P210,
+    MWFOURCC_P010,
+    MWFOURCC_NV21,
+    MWFOURCC_YV12,
+    MWFOURCC_IYUV,
+    MWFOURCC_I420,
+    MWFOURCC_VYUY,
+    MWFOURCC_YVYU,
+    MWFOURCC_VYUA,
 )
 
 DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS = 1e-7
+
+
+class ColourFormat(Enum):
+    UNK = MWFOURCC_UNK
+    GREY = MWFOURCC_GREY
+    Y800 = MWFOURCC_Y800
+    Y8 = MWFOURCC_Y8
+    Y16 = MWFOURCC_Y16
+    RGB15 = MWFOURCC_RGB15
+    RGB16 = MWFOURCC_RGB16
+    RGB24 = MWFOURCC_RGB24
+    RGBA = MWFOURCC_RGBA
+    ARGB = MWFOURCC_ARGB
+    BGR15 = MWFOURCC_BGR15
+    BGR16 = MWFOURCC_BGR16
+    BGR24 = MWFOURCC_BGR24
+    BGRA = MWFOURCC_BGRA
+    ABGR = MWFOURCC_ABGR
+    MNV16 = MWFOURCC_NV16
+    NV61 = MWFOURCC_NV61
+    I422 = MWFOURCC_I422
+    YV16 = MWFOURCC_YV16
+    YUY2 = MWFOURCC_YUY2
+    YUYV = MWFOURCC_YUYV
+    UYVY = MWFOURCC_UYVY
+    YVYU = MWFOURCC_YVYU
+    VYUY = MWFOURCC_VYUY
+    I420 = MWFOURCC_I420
+    IYUV = MWFOURCC_IYUV
+    NV12 = MWFOURCC_NV12
+    YV12 = MWFOURCC_YV12
+    NV21 = MWFOURCC_NV21
+    P010 = MWFOURCC_P010
+    P210 = MWFOURCC_P210
+    IYU2 = MWFOURCC_IYU2
+    V308 = MWFOURCC_V308
+    AYUV = MWFOURCC_AYUV
+    UYVA = MWFOURCC_UYVA
+    V408 = MWFOURCC_V408
+    VYUA = MWFOURCC_VYUA
+    V210 = MWFOURCC_V210
+    Y410 = MWFOURCC_Y410
+    V410 = MWFOURCC_V410
+    RGB10 = MWFOURCC_RGB10
+    BGR10 = MWFOURCC_BGR10
 
 
 @dataclass
@@ -86,7 +171,7 @@ class FrameTimeCode:
 @dataclass
 class ProCaptureSettings:
     dimensions: ImageSizeInPixels = ImageSizeInPixels(1920, 1080)
-    color_format: int = MWFOURCC_BGR24  # Color format of captured video frames.
+    color_format: ColourFormat = ColourFormat.BGR24  # Color format of captured video frames.
     transfer_mode: TransferMode = TransferMode.NORMAL
     num_lines_per_chunk: int = 64
 
@@ -95,11 +180,11 @@ class ProCaptureSettings:
 
     @property
     def min_stride(self) -> int:
-        return cast(int, fourcc_calc_min_stride(self.color_format, self.dimensions.cols, 2))  # type: ignore
+        return cast(int, fourcc_calc_min_stride(self.color_format.value, self.dimensions.cols, 2))  # type: ignore
 
     @property
     def image_size_in_bytes(self) -> int:
-        if self.color_format == MWFOURCC_NV12:
+        if self.color_format == ColourFormat.NV12:
             return self.dimensions.cols * self.dimensions.rows * 2  # copied from line 223 of capture.py
         else:
             return cast(

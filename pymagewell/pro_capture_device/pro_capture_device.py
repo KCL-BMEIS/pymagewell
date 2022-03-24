@@ -182,7 +182,7 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
             cbstride=self._settings.min_stride,
             bbottomup=False,  # this is True in the C++ example, but false in python example,
             pvcontext=0,
-            dwfourcc=self._settings.color_format,  # color format of captured frames
+            dwfourcc=self._settings.color_format.value,  # color format of captured frames
             cx=self._settings.dimensions.cols,
             cy=self._settings.dimensions.rows,
             dwprocessswitchs=0,

@@ -1,0 +1,2 @@
+include versioneer.py
+include pymagewell/_version.py

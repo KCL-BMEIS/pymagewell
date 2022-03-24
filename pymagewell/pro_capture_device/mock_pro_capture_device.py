@@ -1,4 +1,5 @@
 from ctypes import Array, c_char
+from datetime import datetime
 from operator import mod
 from threading import Thread
 from time import monotonic, sleep
@@ -14,6 +15,7 @@ from pymagewell.events.events import (
     TimerEvent,
 )
 from pymagewell.events.notification import Notification
+from pymagewell.pro_capture_device.device_interface import ProCaptureEvents
 from pymagewell.pro_capture_device.device_settings import (
     ProCaptureSettings,
     ImageSizeInPixels,
@@ -31,7 +33,6 @@ from pymagewell.pro_capture_device.device_status import (
     SignalState,
 )
 from pymagewell.pro_capture_device.pro_capture_device_impl import ProCaptureDeviceImpl
-from pymagewell.pro_capture_device.device_interface import ProCaptureEvents
 
 MOCK_RESOLUTION = ImageSizeInPixels(cols=1920, rows=1080)
 MOCK_ASPECT_RATIO = AspectRatio(hor=16, ver=9)
@@ -116,10 +117,11 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
     def stop_grabbing(self) -> None:
         self._is_grabbing = False
 
-    def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> None:
+    def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> datetime:
         random_ints = (255 * random.rand(self.frame_properties.size_in_bytes)).astype(uint8).tobytes()
         frame_buffer[: self.frame_properties.size_in_bytes] = random_ints  # type: ignore
         self.events.transfer_complete.set()
+        return datetime.now()
 
     def shutdown(self) -> None:
         self._is_grabbing = False

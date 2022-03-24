@@ -1,5 +1,6 @@
 import time
 from ctypes import create_string_buffer, string_at
+from datetime import datetime
 from functools import singledispatchmethod
 from typing import Optional
 
@@ -63,21 +64,21 @@ class ProCaptureController:
     def _(self, event: TimerEvent) -> Optional[VideoFrame]:
         """If timer event received, then whole frame is on device. This method transfers it to a buffer in PC memory,
         makes a copy, marks the buffer memory as free and then returns the copy."""
-        self._device.start_a_frame_transfer(self._transfer_buffer)
+        timestamp = self._device.start_a_frame_transfer(self._transfer_buffer)
         self._wait_for_transfer_to_complete(timeout_ms=2000)
         if not self._device.transfer_status.whole_frame_transferred:  # this marks the buffer memory as free
             raise IOError("Only part of frame has been acquired")
-        return self._format_frame()
+        return self._format_frame(timestamp)
 
     @_handle_event.register
     def _(self, event: FrameBufferedEvent) -> Optional[VideoFrame]:
         """If FrameBufferedEvent event received, then whole frame is on device. This method transfers it to a buffer in
         PC memory, makes a copy, marks the buffer memory as free and then returns the copy."""
-        self._device.start_a_frame_transfer(self._transfer_buffer)
+        timestamp = self._device.start_a_frame_transfer(self._transfer_buffer)
         self._wait_for_transfer_to_complete(timeout_ms=2000)
         if not self._device.transfer_status.whole_frame_transferred:  # this marks the buffer memory as free
             raise IOError("Only part of frame has been acquired")
-        return self._format_frame()
+        return self._format_frame(timestamp)
 
     @_handle_event.register
     def _(self, event: FrameBufferingEvent) -> Optional[VideoFrame]:
@@ -85,32 +86,31 @@ class ProCaptureController:
         starts the transfer of the available lines to a buffer in PC memory while the acquisition is still happening.
          It then waits until all lines have been received (this query also frees the memory), copies the buffer contents
          and returns the copy."""
-        self._device.start_a_frame_transfer(self._transfer_buffer)
+        timestamp = self._device.start_a_frame_transfer(self._transfer_buffer)
         self._wait_for_transfer_to_complete(timeout_ms=2000)
-        t = time.perf_counter()
+        wait_start_t = time.perf_counter()
         while (
             self._device.transfer_status.num_lines_transferred < self._device.frame_properties.dimensions.rows
-            and (time.perf_counter() - t) < 1
+            and (time.perf_counter() - wait_start_t) < 1
         ):
             # this marks the buffer memory as free
             pass
 
-        return self._format_frame()
+        return self._format_frame(timestamp)
 
     @_handle_event.register
     def _(self, event: SignalChangeEvent) -> None:
         """If a SignalChangeEvent is received, then the source signal has changed and no frame is available."""
         print("Frame grabber signal change detected")
 
-    def _format_frame(self) -> VideoFrame:
+    def _format_frame(self, timestamp: datetime) -> VideoFrame:
         """Copy the contents of the transfer buffer, and return it as a VideoFrame."""
-        t = self._device.frame_status.top_frame_time_code
         # Copy the acquired frame
         string_buffer = string_at(self._transfer_buffer, self._device.frame_properties.size_in_bytes)
         frame = VideoFrame(
             string_buffer,
             dimensions=self._device.frame_properties.dimensions,
-            timestamp=t,
+            timestamp=timestamp,
         )
         return frame
 

@@ -23,10 +23,7 @@ class ProCaptureDeviceImpl(ProCaptureDeviceInterface, ABC):
 
     @property
     def frame_properties(self) -> FrameProperties:
-        return FrameProperties(
-            dimensions=self._settings.dimensions,
-            size_in_bytes=self._settings.image_size_in_bytes,
-        )
+        return FrameProperties(dimensions=self._settings.dimensions, size_in_bytes=self._settings.image_size_in_bytes)
 
     @property
     def fps(self) -> float:

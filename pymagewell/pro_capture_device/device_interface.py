@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from ctypes import Array, c_char
 from dataclasses import dataclass
+from datetime import datetime
 
 from pymagewell.events.events import (
     TransferCompleteEvent,
@@ -102,7 +103,7 @@ class ProCaptureDeviceInterface(ABC):
         raise NotImplementedError()
 
     @abstractmethod
-    def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> None:
+    def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> datetime:
         raise NotImplementedError()
 
     @abstractmethod

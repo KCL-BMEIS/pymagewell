@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime
 
 from PIL import Image
 from numpy import array, uint8
@@ -6,7 +7,6 @@ from numpy.typing import NDArray
 
 from pymagewell.pro_capture_device.device_settings import (
     ImageSizeInPixels,
-    FrameTimeCode,
 )
 
 
@@ -14,7 +14,7 @@ from pymagewell.pro_capture_device.device_settings import (
 class VideoFrame:
     string_buffer: bytes
     dimensions: ImageSizeInPixels
-    timestamp: FrameTimeCode
+    timestamp: datetime
 
     def as_pillow_image(self) -> Image.Image:
         return Image.frombuffer(

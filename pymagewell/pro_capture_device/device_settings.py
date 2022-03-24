@@ -12,6 +12,8 @@ from mwcapture.libmwcapture import (
     mwcap_smpte_timecode,
 )
 
+DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS = 1e-7
+
 
 @dataclass
 class ImageCoordinateInPixels:

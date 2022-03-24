@@ -1,3 +1,4 @@
+from datetime import datetime
 from time import perf_counter
 from unittest import TestCase
 
@@ -27,11 +28,10 @@ class TestCaptureController(TestCase):
     def tearDown(self) -> None:
         self._controller.shutdown()
 
-    # def test_frame_timestamp(self) -> None:
-    #     frame = self._controller.transfer_when_ready(timeout_ms=1000)
-    #     seconds_since_frame = (datetime.now() - frame.timestamp.as_datetime(
-    #         self._device.signal_status.frame_period_s)).total_seconds()
-    #     self.assertTrue(seconds_since_frame < 0.25)
+    def test_frame_timestamp(self) -> None:
+        frame = self._controller.transfer_when_ready(timeout_ms=1000)
+        seconds_since_frame = (datetime.now() - frame.timestamp).total_seconds()
+        self.assertTrue(0 <= seconds_since_frame < 0.25)
 
     def test_frame_size(self) -> None:
         frame = self._controller.transfer_when_ready(timeout_ms=1000)

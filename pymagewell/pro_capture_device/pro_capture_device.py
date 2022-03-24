@@ -1,4 +1,5 @@
 from ctypes import create_unicode_buffer, Array, c_char, addressof
+from datetime import datetime, timedelta
 from typing import cast, Optional
 
 from mwcapture.libmwcapture import (
@@ -36,6 +37,7 @@ from pymagewell.events.notification import Notification
 from pymagewell.pro_capture_device.device_settings import (
     TransferMode,
     ProCaptureSettings,
+    DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS,
 )
 from pymagewell.pro_capture_device.pro_capture_device_impl import ProCaptureDeviceImpl
 from pymagewell.pro_capture_device.device_interface import ProCaptureEvents
@@ -57,6 +59,10 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
         self.mw_capture_init_instance()  # type: ignore
         self.mw_refresh_device()  # type: ignore
         self._channel = create_channel(self)
+
+        self._device_time_in_s_at_init = self._get_device_time_in_s()
+        self._system_time_at_init = datetime.now()
+
         self._timer = FrameTimer(self, self._channel, self._register_timer_event(TimerEvent()))
 
         self._signal_change_event = cast(SignalChangeEvent, self._register_event(SignalChangeEvent()))
@@ -97,7 +103,7 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
         return event
 
     def schedule_timer_event(self) -> None:
-        self._timer.schedule_timer_event(self._get_device_time())
+        self._timer.schedule_timer_event(self._get_device_time_in_ticks())
 
     @property
     def buffer_status(self) -> OnDeviceBufferStatus:
@@ -149,7 +155,7 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
         self.mw_get_video_capture_status(self._channel, mw_capture_status)  # type: ignore
         return TransferStatus.from_mw_video_capture_status(mw_capture_status)
 
-    def _get_device_time(self) -> mw_device_time:
+    def _get_device_time_in_ticks(self) -> mw_device_time:
         """Read a timestamp from the device."""
         time = mw_device_time()  # type: ignore
         result = self.mw_get_device_time(self._channel, time)  # type: ignore
@@ -158,10 +164,16 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
         else:
             return time
 
-    def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> None:
+    def _get_device_time_in_s(self) -> float:
+        return int(self._get_device_time_in_ticks().m_ll_device_time.value) * DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS
+
+    def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> datetime:
         """Start the transfer of lines from the device to a buffer in PC memory."""
         in_low_latency_mode = self.transfer_mode == TransferMode.LOW_LATENCY
         notify_size = self._settings.num_lines_per_chunk if in_low_latency_mode else 0
+
+        seconds_since_init = self._get_device_time_in_s() - self._device_time_in_s_at_init
+        frame_timestamp = self._system_time_at_init + timedelta(seconds=seconds_since_init)
         result = self.mw_capture_video_frame_to_virtual_address_ex(  # type: ignore
             hchannel=self._channel,
             iframe=self.buffer_status.last_buffered_frame_index,
@@ -193,8 +205,9 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
             satrange=MWCAP_VIDEO_SATURATION_UNKNOWN,
         )
         if result != MW_SUCCEEDED:
-            print(f"Frame grab failed with error code {result}")
-            return None
+            raise IOError(f"Frame grab failed with error code {result}")
+        else:
+            return frame_timestamp
 
     def shutdown(self) -> None:
         self._timer.shutdown()
@@ -232,8 +245,8 @@ class FrameTimer:
         if self._frame_expire_time is None:
             self._frame_expire_time = device_time_now
         self._frame_expire_time.m_ll_device_time.value += int(
-            1e7 * self._device.signal_status.frame_period_s
-        )  # why 1e7
+            self._device.signal_status.frame_period_s / DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS
+        )
 
         if self._timer_event.is_registered:
             result = self._device.mw_schedule_timer(

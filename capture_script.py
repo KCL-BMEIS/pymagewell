@@ -1,6 +1,9 @@
 import time
+from datetime import timedelta
+from typing import cast
 
 from cv2 import imshow, waitKey
+from numpy import array, diff
 
 from pymagewell.pro_capture_device import ProCaptureDevice
 from pymagewell.pro_capture_controller import ProCaptureController
@@ -10,18 +13,23 @@ from pymagewell.pro_capture_device.mock_pro_capture_device import MockProCapture
 if __name__ == '__main__':
 
     device_settings = ProCaptureSettings()
-    device_settings.transfer_mode = TransferMode.TIMER
-    device = MockProCaptureDevice(device_settings)
+    device_settings.transfer_mode = TransferMode.LOW_LATENCY
+    device = ProCaptureDevice(device_settings)
     frame_grabber = ProCaptureController(device)
 
     print('PRESS Q TO QUIT!')
 
+    counter = 0
+    timestamps = []
     while True:
         frame = frame_grabber.transfer_when_ready()
-        t = time.perf_counter()
+        timestamps.append(frame.timestamp)
         imshow("video", frame.as_array())
         if waitKey(1) & 0xFF == ord('q'):
             break
-        # print(f"Frame took {time.perf_counter() - t} seconds to display on screen.")
-        # print(frame.timestamp)
+        if counter % 20 == 0:
+            mean_period = array([p.total_seconds() for p in diff(array(timestamps))]).mean()
+            print(f'Average frame rate over last 20 frames: {1 / mean_period} Hz')
+            print(f'Last frame timestamp: {frame.timestamp}')
+        counter += 1
     frame_grabber.shutdown()

@@ -20,6 +20,7 @@ from pymagewell.pro_capture_device.device_settings import (
     AspectRatio,
     ImageCoordinateInPixels,
     FrameTimeCode,
+    DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS,
 )
 
 
@@ -49,7 +50,7 @@ class SignalStatus:
             image_dimensions=ImageSizeInPixels(cols=status.cx, rows=status.cy),
             total_dimensions=ImageSizeInPixels(cols=status.cxTotal, rows=status.cyTotal),
             interlaced=bool(status.bInterlaced),
-            frame_period_s=float(status.dwFrameDuration * 1e-7),  # why 1e-7?
+            frame_period_s=float(status.dwFrameDuration * DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS),
             aspect_ratio=AspectRatio(ver=status.nAspectY, hor=status.nAspectX),
             segmented=bool(status.bSegmentedFrame),
         )

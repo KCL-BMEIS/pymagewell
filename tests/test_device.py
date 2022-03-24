@@ -3,22 +3,26 @@ from ctypes import create_string_buffer
 from time import perf_counter
 from unittest import TestCase
 
+import pytest
+
 from pymagewell.events.event import wait_for_event
 from pymagewell.pro_capture_device import ProCaptureDevice
 from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface
 from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, TransferMode
 from pymagewell.pro_capture_device.mock_pro_capture_device import MockProCaptureDevice
-from tests.config import MOCK_TEST_MODE
 
 
+@pytest.mark.usefixtures("hardware_mode")
 class TestEvents(TestCase):
     def setUp(self) -> None:
         device_settings = ProCaptureSettings()
         device_settings.transfer_mode = TransferMode.TIMER
-        if MOCK_TEST_MODE:
-            self._device: ProCaptureDeviceInterface = MockProCaptureDevice(device_settings)
+
+        assert hasattr(self, "hardware_mode_is_set")
+        if self.hardware_mode_is_set:  # type: ignore
+            self._device: ProCaptureDeviceInterface = ProCaptureDevice(device_settings)
         else:
-            self._device = ProCaptureDevice(device_settings)
+            self._device = MockProCaptureDevice(device_settings)
 
     def tearDown(self) -> None:
         self._device.shutdown()
@@ -46,7 +50,11 @@ class TestEvents(TestCase):
         self._device.schedule_timer_event()
         wait_for_event(self._device.events.timer_event, timeout_ms=1000)
         time_waited = perf_counter() - second_frame_start_time
-        self.assertAlmostEqual(time_waited, expected_wait_time, 2)
+        if self.hardware_mode_is_set:  # type: ignore
+            self.assertAlmostEqual(time_waited, expected_wait_time, 3)
+        else:
+            # Mock mode timing is less accurate
+            self.assertAlmostEqual(time_waited, expected_wait_time, 1)
 
     def test_frame_transfer(self) -> None:
         transfer_buffer = create_string_buffer(3840 * 2160 * 4)

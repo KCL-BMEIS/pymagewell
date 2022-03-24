@@ -1,6 +1,7 @@
 from time import perf_counter
 from unittest import TestCase
 
+import pytest
 from numpy import diff, array
 
 from pymagewell.pro_capture_controller import ProCaptureController
@@ -8,17 +9,18 @@ from pymagewell.pro_capture_device import ProCaptureDevice
 from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface
 from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, TransferMode
 from pymagewell.pro_capture_device.mock_pro_capture_device import MockProCaptureDevice
-from tests.config import MOCK_TEST_MODE
 
 
+@pytest.mark.usefixtures("hardware_mode")
 class TestCaptureController(TestCase):
     def setUp(self) -> None:
         device_settings = ProCaptureSettings()
         device_settings.transfer_mode = TransferMode.TIMER
-        if MOCK_TEST_MODE:
-            self._device: ProCaptureDeviceInterface = MockProCaptureDevice(device_settings)
+        assert hasattr(self, "hardware_mode_is_set")
+        if self.hardware_mode_is_set:  # type: ignore
+            self._device: ProCaptureDeviceInterface = ProCaptureDevice(device_settings)
         else:
-            self._device = ProCaptureDevice(device_settings)
+            self._device = MockProCaptureDevice(device_settings)
 
         self._controller = ProCaptureController(device=self._device)
 

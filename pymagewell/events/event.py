@@ -8,7 +8,7 @@ from pymagewell.events.notification import Notification
 
 
 class Event:
-    def __init__(self):
+    def __init__(self) -> None:
         self._win32_event = win32event.CreateEvent(None, False, False, None)
 
     @property
@@ -24,7 +24,7 @@ class Event:
 
 
 class RegisterableEvent(Event, ABC):
-    def __init__(self):
+    def __init__(self) -> None:
         super().__init__()
         self._state: EventState = Unregistered()
         self._notification: Optional[Notification] = None
@@ -48,7 +48,7 @@ class RegisterableEvent(Event, ABC):
 
 class EventState(ABC):
     @abstractmethod
-    def register(self, notification: Notification) -> 'EventState':
+    def register(self, notification: Notification) -> "EventState":
         raise NotImplementedError()
 
     @abstractmethod
@@ -60,7 +60,7 @@ class Registered(EventState):
     def __init__(self, notification: Notification):
         self._notification = notification
 
-    def register(self, notification: Notification) -> 'EventState':
+    def register(self, notification: Notification) -> "EventState":
         return self
 
     def get_notification(self, event: Event) -> Optional[Notification]:
@@ -68,7 +68,7 @@ class Registered(EventState):
 
 
 class Unregistered(EventState):
-    def register(self, notification: Notification) -> 'EventState':
+    def register(self, notification: Notification) -> "EventState":
         return Registered(notification)
 
     def get_notification(self, event: Event) -> Optional[Notification]:
@@ -95,4 +95,3 @@ def wait_for_event(event: Event, timeout_ms: int) -> None:
     result = win32event.WaitForSingleObject(event.win32_event, timeout_ms)
     if result == 258:
         raise WaitForEventTimeout("Error: wait timed out")
-

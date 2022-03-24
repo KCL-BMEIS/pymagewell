@@ -2,9 +2,15 @@ import math
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+from typing import cast
 
-from mwcapture.libmwcapture import fourcc_calc_min_stride, MWFOURCC_NV12, fourcc_calc_image_size, \
-    MWFOURCC_BGR24, mwcap_smpte_timecode
+from mwcapture.libmwcapture import (
+    fourcc_calc_min_stride,
+    MWFOURCC_NV12,
+    fourcc_calc_image_size,
+    MWFOURCC_BGR24,
+    mwcap_smpte_timecode,
+)
 
 
 @dataclass
@@ -42,30 +48,37 @@ class FrameTimeCode:
     frame: int
 
     @classmethod
-    def from_mwcap_smpte_timecode(cls, tc: mwcap_smpte_timecode) -> 'FrameTimeCode':
+    def from_mwcap_smpte_timecode(cls, tc: mwcap_smpte_timecode) -> "FrameTimeCode":
         return FrameTimeCode(
-            hour=int(tc[0]),
-            minute=int(tc[1]),
-            second=int(tc[2]),
-            frame=int(tc[3])
+            hour=int(tc[0]),  # type: ignore
+            minute=int(tc[1]),  # type: ignore
+            second=int(tc[2]),  # type: ignore
+            frame=int(tc[3]),  # type: ignore
         )
 
     @classmethod
-    def now(cls, frame_period_s: float) -> 'FrameTimeCode':
+    def now(cls, frame_period_s: float) -> "FrameTimeCode":
         microseconds_per_frame = frame_period_s * 1e6
         now = datetime.now()
         return FrameTimeCode(
             hour=now.hour,
             minute=now.minute,
             second=now.second,
-            frame=int(round(now.microsecond / microseconds_per_frame))
+            frame=int(round(now.microsecond / microseconds_per_frame)),
         )
 
     def as_datetime(self, frame_period_s: float) -> datetime:
         microseconds_per_frame = frame_period_s * 1e6
         now = datetime.now()
-        return datetime(year=now.year, month=now.month, day=now.day, hour=self.hour, minute=self.minute,
-                        second=self.second, microsecond=int(self.frame * microseconds_per_frame))
+        return datetime(
+            year=now.year,
+            month=now.month,
+            day=now.day,
+            hour=self.hour,
+            minute=self.minute,
+            second=self.second,
+            microsecond=int(self.frame * microseconds_per_frame),
+        )
 
 
 @dataclass
@@ -80,18 +93,26 @@ class ProCaptureSettings:
 
     @property
     def min_stride(self) -> int:
-        return fourcc_calc_min_stride(self.color_format, self.dimensions.cols, 2)
+        return cast(int, fourcc_calc_min_stride(self.color_format, self.dimensions.cols, 2))  # type: ignore
 
     @property
     def image_size_in_bytes(self) -> int:
         if self.color_format == MWFOURCC_NV12:
             return self.dimensions.cols * self.dimensions.rows * 2  # copied from line 223 of capture.py
         else:
-            return fourcc_calc_image_size(self.color_format, self.dimensions.cols, self.dimensions.rows, self.min_stride)
+            return cast(
+                int,
+                fourcc_calc_image_size(  # type: ignore
+                    self.color_format,
+                    self.dimensions.cols,
+                    self.dimensions.rows,
+                    self.min_stride,
+                ),
+            )
 
 
 def check_valid_chunk_size(n_lines_per_chunk: int) -> None:
     if n_lines_per_chunk < 64:
-        raise ValueError('Minimum number of lines per chunk is 64.')
+        raise ValueError("Minimum number of lines per chunk is 64.")
     elif round(math.log2(n_lines_per_chunk)) != math.log2(n_lines_per_chunk):
-        raise ValueError('Number of lines per chunk must be a power of 2.')
+        raise ValueError("Number of lines per chunk must be a power of 2.")

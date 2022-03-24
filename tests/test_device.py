@@ -5,6 +5,7 @@ from unittest import TestCase
 
 from pymagewell.events.event import wait_for_event
 from pymagewell.pro_capture_device import ProCaptureDevice
+from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface
 from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, TransferMode
 from pymagewell.pro_capture_device.mock_pro_capture_device import MockProCaptureDevice
 from tests.config import MOCK_TEST_MODE
@@ -15,7 +16,7 @@ class TestEvents(TestCase):
         device_settings = ProCaptureSettings()
         device_settings.transfer_mode = TransferMode.TIMER
         if MOCK_TEST_MODE:
-            self._device = MockProCaptureDevice(device_settings)
+            self._device: ProCaptureDeviceInterface = MockProCaptureDevice(device_settings)
         else:
             self._device = ProCaptureDevice(device_settings)
 

@@ -1,7 +1,13 @@
 from abc import ABC
 
-from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface, FrameProperties
-from pymagewell.pro_capture_device.device_settings import TransferMode, ProCaptureSettings
+from pymagewell.pro_capture_device.device_interface import (
+    ProCaptureDeviceInterface,
+    FrameProperties,
+)
+from pymagewell.pro_capture_device.device_settings import (
+    TransferMode,
+    ProCaptureSettings,
+)
 
 
 class ProCaptureDeviceImpl(ProCaptureDeviceInterface, ABC):
@@ -19,7 +25,7 @@ class ProCaptureDeviceImpl(ProCaptureDeviceInterface, ABC):
     def frame_properties(self) -> FrameProperties:
         return FrameProperties(
             dimensions=self._settings.dimensions,
-            size_in_bytes=self._settings.image_size_in_bytes
+            size_in_bytes=self._settings.image_size_in_bytes,
         )
 
     @property

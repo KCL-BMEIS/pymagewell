@@ -40,6 +40,6 @@ class TestEvents(TestCase):
         self.assertTrue(event.is_registered)
 
 
-def _set_event_after_100ms(event: Event):
+def _set_event_after_100ms(event: Event) -> None:
     sleep(0.1)
     event.set()

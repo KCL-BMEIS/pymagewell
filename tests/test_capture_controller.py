@@ -31,6 +31,3 @@ class TestEvents(TestCase):
         frame = self._controller.transfer_when_ready(timeout_ms=1000)
         self.assertEqual(frame.dimensions.rows, self._device.frame_properties.dimensions.rows)
         self.assertEqual(frame.dimensions.cols, self._device.frame_properties.dimensions.cols)
-
-
-

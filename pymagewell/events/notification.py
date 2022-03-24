@@ -18,8 +18,8 @@ class Notification:
         self._channel = channel
 
     def get_status(self, mw_capture: mw_capture) -> NotificationStatus:
-        status = mw_notify_status()
-        res = mw_capture.mw_get_notify_status(self._channel, self._handle, status)
+        status: mw_notify_status = mw_notify_status()  # type: ignore
+        res: int = mw_capture.mw_get_notify_status(self._channel, self._handle, status)  # type: ignore
         if res != MW_SUCCEEDED:
             raise IOError("Could not read status of notification")
         return NotificationStatus(status)

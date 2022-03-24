@@ -2,10 +2,24 @@ from abc import ABC, abstractmethod
 from ctypes import Array, c_char
 from dataclasses import dataclass
 
-from pymagewell.events.events import TransferCompleteEvent, SignalChangeEvent, FrameBufferedEvent, FrameBufferingEvent, \
-    TimerEvent
-from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, TransferMode, ImageSizeInPixels
-from pymagewell.pro_capture_device.device_status import OnDeviceBufferStatus, FrameStatus, SignalStatus, TransferStatus
+from pymagewell.events.events import (
+    TransferCompleteEvent,
+    SignalChangeEvent,
+    FrameBufferedEvent,
+    FrameBufferingEvent,
+    TimerEvent,
+)
+from pymagewell.pro_capture_device.device_settings import (
+    ProCaptureSettings,
+    TransferMode,
+    ImageSizeInPixels,
+)
+from pymagewell.pro_capture_device.device_status import (
+    OnDeviceBufferStatus,
+    FrameStatus,
+    SignalStatus,
+    TransferStatus,
+)
 
 
 @dataclass

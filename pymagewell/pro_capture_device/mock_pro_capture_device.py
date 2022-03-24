@@ -6,13 +6,30 @@ from typing import Optional
 
 from numpy import random, uint8
 
-from pymagewell.events.events import TransferCompleteEvent, SignalChangeEvent, FrameBufferedEvent, FrameBufferingEvent, \
-    TimerEvent
+from pymagewell.events.events import (
+    TransferCompleteEvent,
+    SignalChangeEvent,
+    FrameBufferedEvent,
+    FrameBufferingEvent,
+    TimerEvent,
+)
 from pymagewell.events.notification import Notification
-from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, ImageSizeInPixels, AspectRatio, \
-    FrameTimeCode, ImageCoordinateInPixels, TransferMode
-from pymagewell.pro_capture_device.device_status import TransferStatus, SignalStatus, FrameStatus, OnDeviceBufferStatus, \
-    FrameState, SignalState
+from pymagewell.pro_capture_device.device_settings import (
+    ProCaptureSettings,
+    ImageSizeInPixels,
+    AspectRatio,
+    FrameTimeCode,
+    ImageCoordinateInPixels,
+    TransferMode,
+)
+from pymagewell.pro_capture_device.device_status import (
+    TransferStatus,
+    SignalStatus,
+    FrameStatus,
+    OnDeviceBufferStatus,
+    FrameState,
+    SignalState,
+)
 from pymagewell.pro_capture_device.pro_capture_device_impl import ProCaptureDeviceImpl
 from pymagewell.pro_capture_device.device_interface import ProCaptureEvents
 
@@ -32,7 +49,7 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
             signal_change=SignalChangeEvent(),
             frame_buffered=FrameBufferedEvent(),
             frame_buffering=FrameBufferingEvent(),
-            timer_event=TimerEvent()
+            timer_event=TimerEvent(),
         )
         self._events.signal_change.register(Notification(0, 0))
         self._events.timer_event.register(Notification(0, 0))
@@ -55,7 +72,7 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
             last_buffered_field_index=1,
             last_buffered_frame_index=1,
             num_fully_buffered_frames=1,
-            num_chunks_being_buffered=1
+            num_chunks_being_buffered=1,
         )
 
     @property
@@ -68,7 +85,7 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
             dimensions=MOCK_RESOLUTION,
             aspect_ratio=MOCK_ASPECT_RATIO,
             top_frame_time_code=now_time_code,
-            bottom_frame_time_code=now_time_code
+            bottom_frame_time_code=now_time_code,
         )
 
     @property
@@ -79,7 +96,7 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
             image_dimensions=MOCK_RESOLUTION,
             total_dimensions=MOCK_RESOLUTION,
             interlaced=False,
-            frame_period_s=1/MOCK_FRAME_RATE_HZ,
+            frame_period_s=1 / MOCK_FRAME_RATE_HZ,
             aspect_ratio=MOCK_ASPECT_RATIO,
             segmented=False,
         )
@@ -90,7 +107,7 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
             whole_frame_transferred=True,
             num_lines_transferred=MOCK_RESOLUTION.rows,
             num_lines_transferred_previously=MOCK_RESOLUTION.rows,
-            frame_index=0
+            frame_index=0,
         )
 
     def start_grabbing(self) -> None:
@@ -101,7 +118,7 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
 
     def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> None:
         random_ints = (255 * random.rand(self.frame_properties.size_in_bytes)).astype(uint8).tobytes()
-        frame_buffer[:self.frame_properties.size_in_bytes] = random_ints
+        frame_buffer[: self.frame_properties.size_in_bytes] = random_ints  # type: ignore
         self.events.transfer_complete.set()
 
     def shutdown(self) -> None:
@@ -109,7 +126,6 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
 
 
 class MockTimer:
-
     def __init__(self, timer_event: TimerEvent, rate_hz: float):
         self._last_event_time: Optional[float] = None
         self._timer_event_thread = Thread(target=self._wait_and_generate)
@@ -121,18 +137,17 @@ class MockTimer:
         self._timer_event_thread = Thread(target=self._wait_and_generate)
         self._timer_event_thread.start()
 
-    def _wait_and_generate(self):
+    def _wait_and_generate(self) -> None:
         if self._last_event_time is not None:
             time_since_last_event = monotonic() - self._last_event_time
             time_until_next_event = (1.0 / self._rate_hz) - time_since_last_event
             if time_until_next_event > 0:
                 sleep(time_until_next_event)
             elif mod(self._event_counter, 10) == 0:
-                print(f"Mock frame rate is {1 / time_since_last_event:.3f} Hz, "
-                      f"which is lower than the requested {self._rate_hz} Hz.")
+                print(
+                    f"Mock frame rate is {1 / time_since_last_event:.3f} Hz, "
+                    f"which is lower than the requested {self._rate_hz} Hz."
+                )
         self._last_event_time = monotonic()
         self._timer_event.set()
         self._event_counter += 1
-
-
-

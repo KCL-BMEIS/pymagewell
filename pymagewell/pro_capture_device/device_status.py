@@ -1,13 +1,26 @@
-import datetime
 from dataclasses import dataclass
 from enum import Enum
 
-from mwcapture.libmwcapture import mw_video_capture_status, mw_video_signal_status, MWCAP_VIDEO_SIGNAL_NONE, \
-    MWCAP_VIDEO_SIGNAL_UNSUPPORTED, MWCAP_VIDEO_SIGNAL_LOCKING, MWCAP_VIDEO_SIGNAL_LOCKED, mwcap_video_buffer_info, \
-    MWCAP_VIDEO_FRAME_STATE_INITIAL, MWCAP_VIDEO_FRAME_STATE_BUFFERED, MWCAP_VIDEO_FRAME_STATE_F0_BUFFERING, \
-    MWCAP_VIDEO_FRAME_STATE_F1_BUFFERING, mwcap_video_frame_info, mwcap_smpte_timecode
-from pymagewell.pro_capture_device.device_settings import ImageSizeInPixels, AspectRatio, ImageCoordinateInPixels, \
-    FrameTimeCode
+from mwcapture.libmwcapture import (
+    mw_video_capture_status,
+    mw_video_signal_status,
+    MWCAP_VIDEO_SIGNAL_NONE,
+    MWCAP_VIDEO_SIGNAL_UNSUPPORTED,
+    MWCAP_VIDEO_SIGNAL_LOCKING,
+    MWCAP_VIDEO_SIGNAL_LOCKED,
+    mwcap_video_buffer_info,
+    MWCAP_VIDEO_FRAME_STATE_INITIAL,
+    MWCAP_VIDEO_FRAME_STATE_BUFFERED,
+    MWCAP_VIDEO_FRAME_STATE_F0_BUFFERING,
+    MWCAP_VIDEO_FRAME_STATE_F1_BUFFERING,
+    mwcap_video_frame_info,
+)
+from pymagewell.pro_capture_device.device_settings import (
+    ImageSizeInPixels,
+    AspectRatio,
+    ImageCoordinateInPixels,
+    FrameTimeCode,
+)
 
 
 class SignalState(Enum):
@@ -29,7 +42,7 @@ class SignalStatus:
     segmented: bool
 
     @classmethod
-    def from_mw_video_signal_status(cls, status: mw_video_signal_status) -> 'SignalStatus':
+    def from_mw_video_signal_status(cls, status: mw_video_signal_status) -> "SignalStatus":
         return SignalStatus(
             state=SignalState(status.state),
             start_position=ImageCoordinateInPixels(col=status.cols, row=status.rows),
@@ -38,7 +51,7 @@ class SignalStatus:
             interlaced=bool(status.bInterlaced),
             frame_period_s=float(status.dwFrameDuration * 1e-3),
             aspect_ratio=AspectRatio(ver=status.nAspectY, hor=status.nAspectX),
-            segmented=bool(status.bSegmentedFrame)
+            segmented=bool(status.bSegmentedFrame),
         )
 
 
@@ -50,12 +63,12 @@ class TransferStatus:
     num_lines_transferred_previously: int
 
     @classmethod
-    def from_mw_video_capture_status(cls, status: mw_video_capture_status) -> 'TransferStatus':
+    def from_mw_video_capture_status(cls, status: mw_video_capture_status) -> "TransferStatus":
         return TransferStatus(
             frame_index=status.iFrame,
             whole_frame_transferred=status.bFrameCompleted,
             num_lines_transferred=status.cyCompleted,
-            num_lines_transferred_previously=status.cyCompletedPrev
+            num_lines_transferred_previously=status.cyCompletedPrev,
         )
 
 
@@ -77,7 +90,7 @@ class OnDeviceBufferStatus:
     """Number of fully bufferred full frames"""
 
     @classmethod
-    def from_mwcap_video_buffer_info(cls, info: mwcap_video_buffer_info) -> 'OnDeviceBufferStatus':
+    def from_mwcap_video_buffer_info(cls, info: mwcap_video_buffer_info) -> "OnDeviceBufferStatus":
         return OnDeviceBufferStatus(
             buffer_size_in_frames=info.cMaxFrames,
             num_chunks_being_buffered=info.iNewestBuffering,
@@ -85,7 +98,7 @@ class OnDeviceBufferStatus:
             buffering_field_index=info.iBufferingFieldIndex,
             last_buffered_field_index=info.iBufferedFieldIndex,
             last_buffered_frame_index=info.iNewestBufferedFullFrame,
-            num_fully_buffered_frames=info.cBufferedFullFrames
+            num_fully_buffered_frames=info.cBufferedFullFrames,
         )
 
 
@@ -107,7 +120,7 @@ class FrameStatus:
     bottom_frame_time_code: FrameTimeCode
 
     @classmethod
-    def from_mwcap_video_frame_info(cls, info: mwcap_video_frame_info) -> 'FrameStatus':
+    def from_mwcap_video_frame_info(cls, info: mwcap_video_frame_info) -> "FrameStatus":
         return FrameStatus(
             state=FrameState(info.state),
             interlaced=bool(info.bInterlaced),
@@ -115,5 +128,5 @@ class FrameStatus:
             dimensions=ImageSizeInPixels(cols=info.cx, rows=info.cy),
             aspect_ratio=AspectRatio(hor=info.nAspectX, ver=info.nAspectY),
             top_frame_time_code=FrameTimeCode.from_mwcap_smpte_timecode(info.aSMPTETimeCodes[0:4]),
-            bottom_frame_time_code=FrameTimeCode.from_mwcap_smpte_timecode(info.aSMPTETimeCodes[4:])
+            bottom_frame_time_code=FrameTimeCode.from_mwcap_smpte_timecode(info.aSMPTETimeCodes[4:]),
         )

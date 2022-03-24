@@ -1,10 +1,14 @@
 from mwcapture.libmwcapture import MWCAP_NOTIFY_VIDEO_SIGNAL_CHANGE
 from pymagewell.events.event import Event, RegisterableEvent
-from pymagewell.events.notification import MWCAP_NOTIFY_VIDEO_FRAME_BUFFERING, MWCAP_NOTIFY_VIDEO_FRAME_BUFFERED
+from pymagewell.events.notification import (
+    MWCAP_NOTIFY_VIDEO_FRAME_BUFFERING,
+    MWCAP_NOTIFY_VIDEO_FRAME_BUFFERED,
+)
 
 
 class SignalChangeEvent(RegisterableEvent):
     """This event is raised by the driver if the source video signal changes"""
+
     @property
     def registration_token(self) -> int:
         return MWCAP_NOTIFY_VIDEO_SIGNAL_CHANGE
@@ -12,6 +16,7 @@ class SignalChangeEvent(RegisterableEvent):
 
 class FrameBufferingEvent(RegisterableEvent):
     """Raised when frame starts to be acquired by the hardware."""
+
     @property
     def registration_token(self) -> int:
         return MWCAP_NOTIFY_VIDEO_FRAME_BUFFERING
@@ -19,13 +24,14 @@ class FrameBufferingEvent(RegisterableEvent):
 
 class FrameBufferedEvent(RegisterableEvent):
     """Raised when a frame has been completely acquired by the hardware."""
+
     @property
     def registration_token(self) -> int:
         return MWCAP_NOTIFY_VIDEO_FRAME_BUFFERED
 
 
 class TimerEvent(RegisterableEvent):
-    """ The driver provides a timer function to acquire frames at a custom rate. The FrameTimer configures the driver
+    """The driver provides a timer function to acquire frames at a custom rate. The FrameTimer configures the driver
     to raise this event when the timer ticks/"""
 
     @property
@@ -38,15 +44,16 @@ class TransferCompleteEvent(Event):
 
 
 class FrameTransferCompleteEvent(TransferCompleteEvent):
-    """ This event intended to be provided to Device.mw_start_video_capture(). The driver will then raise this event
-        once a capture is complete. It is only used in normal mode, to signify that a whole frame has been transferred
-        to PC memory."""
+    """This event intended to be provided to Device.mw_start_video_capture(). The driver will then raise this event
+    once a capture is complete. It is only used in normal mode, to signify that a whole frame has been transferred
+    to PC memory."""
+
     pass
 
 
 class PartialFrameTransferCompleteEvent(TransferCompleteEvent):
-    """ This event is intended to be provided to Device.mw_start_video_capture(). The driver will then raise this event
+    """This event is intended to be provided to Device.mw_start_video_capture(). The driver will then raise this event
     once a capture is complete. It is only used in low-latency mode, and means that `cypartialnotify` lines have been
     transferred to PC memory."""
-    pass
 
+    pass

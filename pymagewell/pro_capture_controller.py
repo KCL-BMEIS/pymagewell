@@ -64,7 +64,8 @@ class ProCaptureController:
     def _(self, event: TimerEvent) -> Optional[VideoFrame]:
         """If timer event received, then whole frame is on device. This method transfers it to a buffer in PC memory,
         makes a copy, marks the buffer memory as free and then returns the copy."""
-        timestamp = self._device.start_a_frame_transfer(self._transfer_buffer)
+        self._device.start_a_frame_transfer(self._transfer_buffer)
+        timestamp = self._device.frame_info.buffering_start_time
         self._wait_for_transfer_to_complete(timeout_ms=2000)
         if not self._device.transfer_status.whole_frame_transferred:  # this marks the buffer memory as free
             raise IOError("Only part of frame has been acquired")
@@ -74,7 +75,8 @@ class ProCaptureController:
     def _(self, event: FrameBufferedEvent) -> Optional[VideoFrame]:
         """If FrameBufferedEvent event received, then whole frame is on device. This method transfers it to a buffer in
         PC memory, makes a copy, marks the buffer memory as free and then returns the copy."""
-        timestamp = self._device.start_a_frame_transfer(self._transfer_buffer)
+        self._device.start_a_frame_transfer(self._transfer_buffer)
+        timestamp = self._device.frame_info.buffering_start_time
         self._wait_for_transfer_to_complete(timeout_ms=2000)
         if not self._device.transfer_status.whole_frame_transferred:  # this marks the buffer memory as free
             raise IOError("Only part of frame has been acquired")
@@ -86,7 +88,8 @@ class ProCaptureController:
         starts the transfer of the available lines to a buffer in PC memory while the acquisition is still happening.
          It then waits until all lines have been received (this query also frees the memory), copies the buffer contents
          and returns the copy."""
-        timestamp = self._device.start_a_frame_transfer(self._transfer_buffer)
+        self._device.start_a_frame_transfer(self._transfer_buffer)
+        timestamp = self._device.frame_info.buffering_start_time
         self._wait_for_transfer_to_complete(timeout_ms=2000)
         wait_start_t = time.perf_counter()
         while (

@@ -17,7 +17,7 @@ from pymagewell.pro_capture_device.device_settings import (
 )
 from pymagewell.pro_capture_device.device_status import (
     OnDeviceBufferStatus,
-    FrameStatus,
+    FrameInfo,
     SignalStatus,
     TransferStatus,
 )
@@ -76,7 +76,7 @@ class ProCaptureDeviceInterface(ABC):
 
     @property
     @abstractmethod
-    def frame_status(self) -> FrameStatus:
+    def frame_info(self) -> FrameInfo:
         raise NotImplementedError()
 
     @property

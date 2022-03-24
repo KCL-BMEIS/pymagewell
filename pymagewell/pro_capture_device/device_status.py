@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from datetime import datetime, timedelta
 from enum import Enum
 
 from mwcapture.libmwcapture import (
@@ -19,7 +20,6 @@ from pymagewell.pro_capture_device.device_settings import (
     ImageSizeInPixels,
     AspectRatio,
     ImageCoordinateInPixels,
-    FrameTimeCode,
     DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS,
 )
 
@@ -111,23 +111,42 @@ class FrameState(Enum):
 
 
 @dataclass
-class FrameStatus:
+class DeviceInitTime:
+    system_time_as_datetime: datetime
+    device_time_in_s: float
+
+
+def device_time_to_system_time(device_time_in_ticks: int, init_time: DeviceInitTime) -> datetime:
+    secs_since_init = device_time_in_ticks * DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS - init_time.device_time_in_s
+    return init_time.system_time_as_datetime + timedelta(seconds=secs_since_init)
+
+
+@dataclass
+class FrameInfo:
     state: FrameState
     interlaced: bool
     segmented: bool
     dimensions: ImageSizeInPixels
     aspect_ratio: AspectRatio
-    top_frame_time_code: FrameTimeCode
-    bottom_frame_time_code: FrameTimeCode
+    buffering_start_time: datetime
+    buffering_complete_time: datetime
 
     @classmethod
-    def from_mwcap_video_frame_info(cls, info: mwcap_video_frame_info) -> "FrameStatus":
-        return FrameStatus(
+    def from_mwcap_video_frame_info(cls, info: mwcap_video_frame_info, init_time: DeviceInitTime) -> "FrameInfo":
+
+        buffering_start_time_device_ticks = (
+            info.allFieldStartTimes[1] if info.bInterlaced else info.allFieldStartTimes[0]
+        )
+        buffering_complete_time_device_ticks = (
+            info.allFieldBufferedTimes[1] if info.bInterlaced else info.allFieldBufferedTimes[0]
+        )
+
+        return FrameInfo(
             state=FrameState(info.state),
             interlaced=bool(info.bInterlaced),
             segmented=bool(info.bSegmentedFrame),
             dimensions=ImageSizeInPixels(cols=info.cx, rows=info.cy),
             aspect_ratio=AspectRatio(hor=info.nAspectX, ver=info.nAspectY),
-            top_frame_time_code=FrameTimeCode.from_mwcap_smpte_timecode(info.aSMPTETimeCodes[0:4]),
-            bottom_frame_time_code=FrameTimeCode.from_mwcap_smpte_timecode(info.aSMPTETimeCodes[4:]),
+            buffering_start_time=device_time_to_system_time(buffering_start_time_device_ticks, init_time),
+            buffering_complete_time=device_time_to_system_time(buffering_complete_time_device_ticks, init_time),
         )

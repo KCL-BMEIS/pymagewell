@@ -21,7 +21,8 @@ from pymagewell.pro_capture_device.device_status import (
     SignalStatus,
     SignalState,
     OnDeviceBufferStatus,
-    FrameStatus,
+    FrameInfo,
+    DeviceInitTime,
 )
 from pymagewell.events.events import (
     RegisterableEvent,
@@ -60,8 +61,9 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
         self.mw_refresh_device()  # type: ignore
         self._channel = create_channel(self)
 
-        self._device_time_in_s_at_init = self._get_device_time_in_s()
-        self._system_time_at_init = datetime.now()
+        self._device_init_time = DeviceInitTime(
+            device_time_in_s=self._get_device_time_in_s(), system_time_as_datetime=datetime.now()
+        )
 
         self._timer = FrameTimer(self, self._channel, self._register_timer_event(TimerEvent()))
 
@@ -112,10 +114,10 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
         return OnDeviceBufferStatus.from_mwcap_video_buffer_info(buffer_info)
 
     @property
-    def frame_status(self) -> FrameStatus:
+    def frame_info(self) -> FrameInfo:
         frame_info = mwcap_video_frame_info()
         self.mw_get_video_frame_info(self._channel, self.buffer_status.last_buffered_frame_index, frame_info)  # type: ignore
-        return FrameStatus.from_mwcap_video_frame_info(frame_info)
+        return FrameInfo.from_mwcap_video_frame_info(frame_info, self._device_init_time)
 
     @property
     def signal_status(self) -> SignalStatus:
@@ -172,8 +174,8 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
         in_low_latency_mode = self.transfer_mode == TransferMode.LOW_LATENCY
         notify_size = self._settings.num_lines_per_chunk if in_low_latency_mode else 0
 
-        seconds_since_init = self._get_device_time_in_s() - self._device_time_in_s_at_init
-        frame_timestamp = self._system_time_at_init + timedelta(seconds=seconds_since_init)
+        seconds_since_init = self._get_device_time_in_s() - self._device_init_time.device_time_in_s
+        frame_timestamp = self._device_init_time.system_time_as_datetime + timedelta(seconds=seconds_since_init)
         result = self.mw_capture_video_frame_to_virtual_address_ex(  # type: ignore
             hchannel=self._channel,
             iframe=self.buffer_status.last_buffered_frame_index,

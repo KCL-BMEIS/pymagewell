@@ -20,14 +20,13 @@ from pymagewell.pro_capture_device.device_settings import (
     ProCaptureSettings,
     ImageSizeInPixels,
     AspectRatio,
-    FrameTimeCode,
     ImageCoordinateInPixels,
     TransferMode,
 )
 from pymagewell.pro_capture_device.device_status import (
     TransferStatus,
     SignalStatus,
-    FrameStatus,
+    FrameInfo,
     OnDeviceBufferStatus,
     FrameState,
     SignalState,
@@ -77,16 +76,15 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
         )
 
     @property
-    def frame_status(self) -> FrameStatus:
-        now_time_code = FrameTimeCode.now(frame_period_s=self.signal_status.frame_period_s)
-        return FrameStatus(
+    def frame_info(self) -> FrameInfo:
+        return FrameInfo(
             state=FrameState.BUFFERED,
             interlaced=False,
             segmented=False,
             dimensions=MOCK_RESOLUTION,
             aspect_ratio=MOCK_ASPECT_RATIO,
-            top_frame_time_code=now_time_code,
-            bottom_frame_time_code=now_time_code,
+            buffering_start_time=datetime.now(),
+            buffering_complete_time=datetime.now(),
         )
 
     @property

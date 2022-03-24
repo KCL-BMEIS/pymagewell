@@ -20,7 +20,7 @@ class TestEvents(TestCase):
             self._device = ProCaptureDevice(device_settings)
 
     def tearDown(self) -> None:
-        pass
+        self._device.shutdown()
 
     def test_transfer_mode(self) -> None:
         self.assertEqual(self._device.transfer_mode, TransferMode.TIMER)
@@ -53,6 +53,7 @@ class TestEvents(TestCase):
     def test_frame_transfer(self) -> None:
         transfer_buffer = create_string_buffer(3840 * 2160 * 4)
         self._device.start_grabbing()
+        self._device.schedule_timer_event()
         buffer_before = copy(transfer_buffer)
         wait_for_event(self._device.events.timer_event, timeout_ms=1000)
         self._device.start_a_frame_transfer(transfer_buffer)

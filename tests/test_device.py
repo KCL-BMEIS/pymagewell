@@ -37,19 +37,16 @@ class TestEvents(TestCase):
     def test_schedule_timer_event(self) -> None:
         expected_wait_time = self._device.signal_status.frame_period_s
 
-        # First timer event happens immediately
-        start_time = perf_counter()
+        # First timer event not necessarily occurring after one frame period, so use second
         self._device.schedule_timer_event()
         wait_for_event(self._device.events.timer_event, timeout_ms=1000)
-        time_waited = perf_counter() - start_time
-        self.assertTrue(time_waited < 0.0015)
 
         # Seconds one happens after 1 frame period
-        start_time = perf_counter()
+        second_frame_start_time = perf_counter()
         self._device.schedule_timer_event()
         wait_for_event(self._device.events.timer_event, timeout_ms=1000)
-        time_waited = perf_counter() - start_time
-        self.assertTrue((time_waited > expected_wait_time) and (time_waited < expected_wait_time * 2))
+        time_waited = perf_counter() - second_frame_start_time
+        self.assertAlmostEqual(time_waited, expected_wait_time, 2)
 
     def test_frame_transfer(self) -> None:
         transfer_buffer = create_string_buffer(3840 * 2160 * 4)

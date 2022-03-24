@@ -1,5 +1,7 @@
+import os
 import platform
 from ctypes import *
+from pathlib import Path
 
 MW_SUCCEEDED = 0
 MW_FAILED = 1
@@ -698,9 +700,9 @@ class mw_capture(object):
         t_bits,t_linkage = platform.architecture()
         if platform.system() == "Windows":
             if t_bits == '64bit':
-                self.m_lib_path = "mwcapture\\bin\\x64\\LibMWCapture.dll"
+                self.m_lib_path = str(Path(os.path.abspath(__file__)).parent.joinpath("bin/x64/LibMWCapture.dll"))
             elif t_bits == '32bit':
-                self.m_lib_path = "mwcapture\\bin\\x86\\LibMWCapture.dll"
+                self.m_lib_path = str(Path(os.path.abspath(__file__)).parent.joinpath("bin/x86/LibMWCapture.dll"))
             else:
                 raise AssertionError("ERROR:unsupported architecture - %s\n"%(t_bits))
             try:

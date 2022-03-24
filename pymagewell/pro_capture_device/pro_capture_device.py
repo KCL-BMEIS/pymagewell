@@ -231,12 +231,14 @@ class FrameTimer:
 
         if self._frame_expire_time is None:
             self._frame_expire_time = device_time_now
-        self._frame_expire_time.m_ll_device_time.value += int(1e3 * self._device.signal_status.frame_period_s)
+        self._frame_expire_time.m_ll_device_time.value += int(
+            1e7 * self._device.signal_status.frame_period_s
+        )  # why 1e7
 
         if self._timer_event.is_registered:
             result = self._device.mw_schedule_timer(
                 self._channel,
-                self._timer_event.notification,  # type: ignore
+                self._timer_event.notification.handle,  # type: ignore
                 self._frame_expire_time.m_ll_device_time,
             )
         else:

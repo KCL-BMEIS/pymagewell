@@ -5,6 +5,7 @@ from numpy import diff, array
 
 from pymagewell.pro_capture_controller import ProCaptureController
 from pymagewell.pro_capture_device import ProCaptureDevice
+from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface
 from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, TransferMode
 from pymagewell.pro_capture_device.mock_pro_capture_device import MockProCaptureDevice
 from tests.config import MOCK_TEST_MODE
@@ -15,7 +16,7 @@ class TestCaptureController(TestCase):
         device_settings = ProCaptureSettings()
         device_settings.transfer_mode = TransferMode.TIMER
         if MOCK_TEST_MODE:
-            self._device = MockProCaptureDevice(device_settings)
+            self._device: ProCaptureDeviceInterface = MockProCaptureDevice(device_settings)
         else:
             self._device = ProCaptureDevice(device_settings)
 
@@ -37,8 +38,8 @@ class TestCaptureController(TestCase):
 
     def test_frame_period(self) -> None:
         times_frames_received = []
-        for n in range(10):
+        for _ in range(10):
             _ = self._controller.transfer_when_ready(timeout_ms=1000)
             times_frames_received.append(perf_counter())
         mean_frame_period = diff(array(times_frames_received)).mean()
-        self.assertAlmostEqual(self._device.signal_status.frame_period_s, mean_frame_period, 2)
+        self.assertAlmostEqual(self._device.signal_status.frame_period_s, mean_frame_period, 1)

@@ -49,7 +49,7 @@ class SignalStatus:
             image_dimensions=ImageSizeInPixels(cols=status.cx, rows=status.cy),
             total_dimensions=ImageSizeInPixels(cols=status.cxTotal, rows=status.cyTotal),
             interlaced=bool(status.bInterlaced),
-            frame_period_s=float(status.dwFrameDuration * 1e-3),
+            frame_period_s=float(status.dwFrameDuration * 1e-7),  # why 1e-7?
             aspect_ratio=AspectRatio(ver=status.nAspectY, hor=status.nAspectX),
             segmented=bool(status.bSegmentedFrame),
         )

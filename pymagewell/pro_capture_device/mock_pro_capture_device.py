@@ -35,7 +35,7 @@ from pymagewell.pro_capture_device.device_interface import ProCaptureEvents
 
 MOCK_RESOLUTION = ImageSizeInPixels(cols=1920, rows=1080)
 MOCK_ASPECT_RATIO = AspectRatio(hor=16, ver=9)
-MOCK_FRAME_RATE_HZ = 60.0
+MOCK_FRAME_RATE_HZ = 2
 
 
 class MockProCaptureDevice(ProCaptureDeviceImpl):

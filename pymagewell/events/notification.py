@@ -23,3 +23,7 @@ class Notification:
         if res != MW_SUCCEEDED:
             raise IOError("Could not read status of notification")
         return NotificationStatus(status)
+
+    @property
+    def handle(self) -> int:
+        return self._handle

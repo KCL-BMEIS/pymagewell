@@ -42,6 +42,7 @@ from pymagewell.pro_capture_device.device_settings import (
 )
 from pymagewell.pro_capture_device.pro_capture_device_impl import ProCaptureDeviceImpl
 from pymagewell.pro_capture_device.device_interface import ProCaptureEvents
+from pymagewell.exceptions import ProCaptureError
 
 
 class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
@@ -130,7 +131,7 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
         """Starts the hardware acquiring frames"""
         start_capture_result = self.mw_start_video_capture(self._channel, self.events.transfer_complete.win32_event)  # type: ignore
         if start_capture_result != MW_SUCCEEDED:
-            raise IOError(f"Start capture failed (error code {start_capture_result}).")
+            raise ProCaptureError(f"Start capture failed (error code {start_capture_result}).")
         # Check status of input signal
         if self.signal_status.state == SignalState.NONE:
             print("Input signal status: None")
@@ -145,7 +146,7 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
         if self.signal_status.state != SignalState.LOCKED:
             self.mw_stop_video_capture(self._channel)  # type: ignore
             self.shutdown()
-            raise IOError("Signal not locked.")
+            raise ProCaptureError("Signal not locked. It is likely that no video signal is present.")
 
     def stop_grabbing(self) -> None:
         self.mw_stop_video_capture(self._channel)  # type: ignore
@@ -163,7 +164,7 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
         time = mw_device_time()  # type: ignore
         result = self.mw_get_device_time(self._channel, time)  # type: ignore
         if result != MW_SUCCEEDED:
-            raise IOError("Failed to read time from device")
+            raise ProCaptureError("Failed to read time from device")
         else:
             return time
 
@@ -208,7 +209,7 @@ class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
             satrange=MWCAP_VIDEO_SATURATION_UNKNOWN,
         )
         if result != MW_SUCCEEDED:
-            raise IOError(f"Frame grab failed with error code {result}")
+            raise ProCaptureError(f"Frame grab failed with error code {result}")
         else:
             return frame_timestamp
 
@@ -258,9 +259,9 @@ class FrameTimer:
                 self._frame_expire_time.m_ll_device_time,
             )
         else:
-            raise IOError("Timer event not registered with device.")
+            raise ProCaptureError("Timer event not registered with device.")
         if result != MW_SUCCEEDED:
-            raise IOError("Failed to schedule frame timer")
+            raise ProCaptureError("Failed to schedule frame timer")
 
     def shutdown(self) -> None:
         self._timer_event.destroy()

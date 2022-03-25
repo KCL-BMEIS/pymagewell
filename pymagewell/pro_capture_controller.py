@@ -4,7 +4,7 @@ from datetime import datetime
 from functools import singledispatchmethod
 from typing import Optional
 
-from pymagewell.events.event_base import wait_for_events, wait_for_event, WaitForEventTimeout
+from pymagewell.events.event_base import wait_for_events, wait_for_event
 from pymagewell.events.device_events import (
     SignalChangeEvent,
     Event,
@@ -13,6 +13,7 @@ from pymagewell.events.device_events import (
     FrameBufferingEvent,
 )
 from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface
+from pymagewell.exceptions import ProCaptureError, WaitForEventTimeout
 from pymagewell.video_frame import VideoFrame, VideoFrameTimestamps
 from pymagewell.pro_capture_device.device_settings import TransferMode
 
@@ -70,7 +71,7 @@ class ProCaptureController:
         transfer_complete_timestamp = self._wait_for_frame_or_chunk_transfer_to_complete(timeout_ms=2000)
         buffering_complete_timestamp = self._device.frame_info.buffering_complete_time
         if not self._device.transfer_status.whole_frame_transferred:  # this marks the buffer memory as free
-            raise IOError("Only part of frame has been acquired")
+            raise ProCaptureError("Only part of frame has been acquired")
         return self._format_frame(
             timestamps=VideoFrameTimestamps(
                 transfer_started=transfer_started_timestamp,
@@ -90,7 +91,7 @@ class ProCaptureController:
         buffering_started_timestamp = self._device.frame_info.buffering_start_time
         buffering_complete_timestamp = self._device.frame_info.buffering_complete_time
         if not self._device.transfer_status.whole_frame_transferred:  # this marks the buffer memory as free
-            raise IOError("Only part of frame has been acquired")
+            raise ProCaptureError("Only part of frame has been acquired")
         return self._format_frame(
             timestamps=VideoFrameTimestamps(
                 transfer_started=transfer_started_timestamp,

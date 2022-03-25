@@ -39,9 +39,10 @@ MOCK_FRAME_RATE_HZ = 2
 
 
 class MockProCaptureDevice(ProCaptureDeviceImpl):
-    """ Mocks a ProCaptureDevice. Primarily for use during CI. Does not require Magewell driver or hardware. Generates
+    """Mocks a ProCaptureDevice. Primarily for use during CI. Does not require Magewell driver or hardware. Generates
     random noise frames. Copying the mock frames to a provided transfer buffer takes a surprisingly long time (~0.11s)
     which limits the frame rate."""
+
     def __init__(self, settings: ProCaptureSettings):
         if settings.transfer_mode != TransferMode.TIMER:
             raise ValueError("MockProCaptureDevice only works in Timer transfer mode.")

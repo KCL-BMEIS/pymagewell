@@ -5,6 +5,7 @@ import win32api
 import win32event
 
 from pymagewell.events.notification import Notification
+from pymagewell.exceptions import ProCaptureError, WaitForEventTimeout
 
 
 class Event:
@@ -75,10 +76,6 @@ class Unregistered(EventState):
         return None
 
 
-class WaitForEventTimeout(IOError):
-    pass
-
-
 def wait_for_events(events: List[Event], timeout_ms: int) -> Event:
     result = win32event.WaitForMultipleObjects(tuple([event.win32_event for event in events]), False, timeout_ms)
     if result == 258:
@@ -88,7 +85,7 @@ def wait_for_events(events: List[Event], timeout_ms: int) -> Event:
     elif result == win32event.WAIT_OBJECT_0 + 1:
         return events[1]
     else:
-        raise IOError(f"Wait for event failed: error code {result}")
+        raise ProCaptureError(f"Wait for event failed: error code {result}")
 
 
 def wait_for_event(event: Event, timeout_ms: int) -> None:

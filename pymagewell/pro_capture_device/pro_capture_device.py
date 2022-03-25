@@ -47,8 +47,9 @@ from pymagewell.pro_capture_device.device_interface import ProCaptureEvents
 class ProCaptureDevice(ProCaptureDeviceImpl, mw_capture):
     """A ProCapture hardware device. Inherits from the mw_capture class provided by Magewell's python library.
 
-    ProCaptureDevice is responsible for constructing and registering events with the Magewell driver. It also provides
-     methods for accessing information about the video source connected to the device."""
+    ProCaptureDevice configures and initiates frame acquisition and trasnfer. It is responsible for constructing and
+    registering events with the Magewell driver. It also provides methods for accessing information about the video
+    source connected to the device."""
 
     def __init__(self, settings: ProCaptureSettings):
         """transfer_mode determines which events the device will raise to trigger a ProCaptureController to start
@@ -229,7 +230,7 @@ def create_channel(capturer: mw_capture) -> int:
 
 
 class FrameTimer:
-    """If the devices transfer mode it "Timer", this class is used to generate events triggering the transfer of frames
+    """If the devices transfer mode is "Timer", this class is used to generate events triggering the transfer of frames
     from the device."""
 
     def __init__(self, device: ProCaptureDevice, channel: int, event: TimerEvent):

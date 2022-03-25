@@ -36,5 +36,15 @@ while True:
     frame = controller.transfer_when_ready()
 ```
 `VideoFrame` provides access to the pixels as Pillow image with its `as_pillow_image()` method, or a Numpy array with
-its `as_numpy_array` method. It also provides access to a Timestamp generated when the frame was ready for transfer from
-the card to the PC.
+its `as_numpy_array` method. It also provides access to timestamps (datetime.datetime) describing the frame acquisition 
+process:
+```python
+t1 = frame.timestamps.buffering_started  # time at which frame started being written to the hardware buffer
+buffer
+t2 = frame.timestamps.buffering_complete  # time at which frame was completely written to the hardware buffer
+t3 = frame.timestamps.transfer_started  # time at which the software started transferring the frame to PC memory
+t4 = frame.timestamps.transfer_complete  # time by which the whole frame had arrived in PC memory
+```
+In TIMER and NORMAL transfer modes, transfer starts after the full frame has been written to hardware buffer. In 
+LOW_LATENCY transfer mode, transfer starts while the frame is still being written to hardware memory. This will be 
+reflected in the timestamps.

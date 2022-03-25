@@ -1,5 +1,5 @@
 from mwcapture.libmwcapture import MWCAP_NOTIFY_VIDEO_SIGNAL_CHANGE
-from pymagewell.events.event import Event, RegisterableEvent
+from pymagewell.events.event_base import Event, RegisterableEvent
 from pymagewell.events.notification import (
     MWCAP_NOTIFY_VIDEO_FRAME_BUFFERING,
     MWCAP_NOTIFY_VIDEO_FRAME_BUFFERED,

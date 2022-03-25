@@ -4,8 +4,8 @@ from datetime import datetime
 from functools import singledispatchmethod
 from typing import Optional
 
-from pymagewell.events.event import wait_for_events, wait_for_event, WaitForEventTimeout
-from pymagewell.events.events import (
+from pymagewell.events.event_base import wait_for_events, wait_for_event, WaitForEventTimeout
+from pymagewell.events.device_events import (
     SignalChangeEvent,
     Event,
     TimerEvent,
@@ -26,7 +26,7 @@ class ProCaptureController:
         self._device.start_grabbing()
 
     def transfer_when_ready(self, timeout_ms: int = 2000) -> VideoFrame:
-        """Wait for a frame to be ready for transfer, and then transfer it."""
+        """Wait for a frame to be ready for transfer, and then transfer it. This is a blocking call."""
         if self._device.transfer_mode == TransferMode.TIMER:
             self._device.schedule_timer_event()
         event = self._wait_for_event(timeout_ms=timeout_ms)

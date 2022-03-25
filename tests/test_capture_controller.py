@@ -28,10 +28,29 @@ class TestCaptureController(TestCase):
     def tearDown(self) -> None:
         self._controller.shutdown()
 
-    def test_frame_timestamp(self) -> None:
+    def test_buffering_timestamps(self) -> None:
         frame = self._controller.transfer_when_ready(timeout_ms=1000)
-        seconds_since_frame = (datetime.now() - frame.timestamp).total_seconds()
-        self.assertTrue(0 <= seconds_since_frame < 0.25)
+
+        buffering_duration = (frame.timestamps.buffering_complete - frame.timestamps.buffering_started).total_seconds()
+        self.assertTrue(0 <= buffering_duration <= 0.1)
+
+        seconds_since_buffering_started = (datetime.now() - frame.timestamps.buffering_started).total_seconds()
+        self.assertTrue(0 <= seconds_since_buffering_started < 0.25)
+
+        seconds_since_buffering_complete = (datetime.now() - frame.timestamps.buffering_complete).total_seconds()
+        self.assertTrue(0 <= seconds_since_buffering_complete < 0.25)
+
+    def test_transfer_timestamps(self) -> None:
+        frame = self._controller.transfer_when_ready(timeout_ms=1000)
+
+        transfer_duration = (frame.timestamps.transfer_complete - frame.timestamps.transfer_started).total_seconds()
+        self.assertTrue(0 <= transfer_duration <= 0.1)
+
+        seconds_since_transfer_started = (datetime.now() - frame.timestamps.transfer_started).total_seconds()
+        self.assertTrue(0 <= seconds_since_transfer_started < 0.25)
+
+        seconds_since_transfer_complete = (datetime.now() - frame.timestamps.transfer_complete).total_seconds()
+        self.assertTrue(0 <= seconds_since_transfer_complete < 0.25)
 
     def test_frame_size(self) -> None:
         frame = self._controller.transfer_when_ready(timeout_ms=1000)

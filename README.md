@@ -29,7 +29,8 @@ from pymagewell.pro_capture_controller import ProCaptureController
 controller = ProCaptureController(device)
 ```
 Then you can grab frames in a loop using the `transfer_when_ready()` method, which will wait until a frame has been 
-acquired by the device, transfer it from the device to the PC, and return it as a `VideoFrame` object. 
+acquired by the device, transfer it from the device to the PC, and return it as a `VideoFrame` object. This is a 
+blocking call.
 ```python
 while True:
     frame = controller.transfer_when_ready()

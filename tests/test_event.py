@@ -2,8 +2,8 @@ from threading import Thread
 from time import sleep, perf_counter
 from unittest import TestCase
 
-from pymagewell.events.event import Event, wait_for_event, wait_for_events
-from pymagewell.events.events import TransferCompleteEvent, TimerEvent, FrameBufferedEvent
+from pymagewell.events.event_base import Event, wait_for_event, wait_for_events
+from pymagewell.events.device_events import TransferCompleteEvent, TimerEvent, FrameBufferedEvent
 from pymagewell.events.notification import Notification
 
 

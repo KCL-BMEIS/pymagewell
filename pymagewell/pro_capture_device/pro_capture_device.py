@@ -24,7 +24,7 @@ from pymagewell.pro_capture_device.device_status import (
     FrameInfo,
     DeviceInitTime,
 )
-from pymagewell.events.events import (
+from pymagewell.events.device_events import (
     RegisterableEvent,
     SignalChangeEvent,
     FrameBufferingEvent,

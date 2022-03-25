@@ -3,7 +3,7 @@ from ctypes import Array, c_char
 from dataclasses import dataclass
 from datetime import datetime
 
-from pymagewell.events.events import (
+from pymagewell.events.device_events import (
     TransferCompleteEvent,
     SignalChangeEvent,
     FrameBufferedEvent,

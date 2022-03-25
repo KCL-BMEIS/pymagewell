@@ -7,7 +7,7 @@ from typing import Optional
 
 from numpy import random, uint8
 
-from pymagewell.events.events import (
+from pymagewell.events.device_events import (
     TransferCompleteEvent,
     SignalChangeEvent,
     FrameBufferedEvent,

@@ -5,7 +5,7 @@ from unittest import TestCase
 
 import pytest
 
-from pymagewell.events.event import wait_for_event
+from pymagewell.events.event_base import wait_for_event
 from pymagewell.pro_capture_device import ProCaptureDevice
 from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface
 from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, TransferMode

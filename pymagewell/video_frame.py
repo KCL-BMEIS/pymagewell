@@ -11,10 +11,18 @@ from pymagewell.pro_capture_device.device_settings import (
 
 
 @dataclass
+class VideoFrameTimestamps:
+    buffering_started: datetime
+    buffering_complete: datetime
+    transfer_started: datetime
+    transfer_complete: datetime
+
+
+@dataclass
 class VideoFrame:
     string_buffer: bytes
     dimensions: ImageSizeInPixels
-    timestamp: datetime
+    timestamps: VideoFrameTimestamps
 
     def as_pillow_image(self) -> Image.Image:
         return Image.frombuffer(

@@ -13,7 +13,7 @@ from pymagewell.events.events import (
     FrameBufferingEvent,
 )
 from pymagewell.pro_capture_device.device_interface import ProCaptureDeviceInterface
-from pymagewell.video_frame import VideoFrame
+from pymagewell.video_frame import VideoFrame, VideoFrameTimestamps
 from pymagewell.pro_capture_device.device_settings import TransferMode
 
 
@@ -62,66 +62,93 @@ class ProCaptureController:
 
     @_handle_event.register
     def _(self, event: TimerEvent) -> Optional[VideoFrame]:
-        """If timer event received, then whole frame is on device. This method transfers it to a buffer in PC memory,
-        makes a copy, marks the buffer memory as free and then returns the copy."""
-        self._device.start_a_frame_transfer(self._transfer_buffer)
-        timestamp = self._device.frame_info.buffering_start_time
-        self._wait_for_transfer_to_complete(timeout_ms=2000)
+        """If timer event received, then whole frame is on device. Only subscribed to in TIMER mode. This method
+        transfers the frame to a buffer in PC memory, makes a copy, marks the buffer memory as free and then returns
+        the copy."""
+        transfer_started_timestamp = self._device.start_a_frame_transfer(self._transfer_buffer)
+        buffering_started_timestamp = self._device.frame_info.buffering_start_time
+        transfer_complete_timestamp = self._wait_for_frame_or_chunk_transfer_to_complete(timeout_ms=2000)
+        buffering_complete_timestamp = self._device.frame_info.buffering_complete_time
         if not self._device.transfer_status.whole_frame_transferred:  # this marks the buffer memory as free
             raise IOError("Only part of frame has been acquired")
-        return self._format_frame(timestamp)
+        return self._format_frame(
+            timestamps=VideoFrameTimestamps(
+                transfer_started=transfer_started_timestamp,
+                transfer_complete=transfer_complete_timestamp,
+                buffering_started=buffering_started_timestamp,
+                buffering_complete=buffering_complete_timestamp,
+            )
+        )
 
     @_handle_event.register
     def _(self, event: FrameBufferedEvent) -> Optional[VideoFrame]:
-        """If FrameBufferedEvent event received, then whole frame is on device. This method transfers it to a buffer in
-        PC memory, makes a copy, marks the buffer memory as free and then returns the copy."""
-        self._device.start_a_frame_transfer(self._transfer_buffer)
-        timestamp = self._device.frame_info.buffering_start_time
-        self._wait_for_transfer_to_complete(timeout_ms=2000)
+        """If FrameBufferedEvent event received, then whole frame is on device. This event is only subscribed to in
+        NORMAL mode. This method transfers it to a buffer in PC memory, makes a copy, marks the buffer memory as free
+        and then returns the copy."""
+        transfer_started_timestamp = self._device.start_a_frame_transfer(self._transfer_buffer)
+        transfer_complete_timestamp = self._wait_for_frame_or_chunk_transfer_to_complete(timeout_ms=2000)
+        buffering_started_timestamp = self._device.frame_info.buffering_start_time
+        buffering_complete_timestamp = self._device.frame_info.buffering_complete_time
         if not self._device.transfer_status.whole_frame_transferred:  # this marks the buffer memory as free
             raise IOError("Only part of frame has been acquired")
-        return self._format_frame(timestamp)
+        return self._format_frame(
+            timestamps=VideoFrameTimestamps(
+                transfer_started=transfer_started_timestamp,
+                transfer_complete=transfer_complete_timestamp,
+                buffering_started=buffering_started_timestamp,
+                buffering_complete=buffering_complete_timestamp,
+            )
+        )
 
     @_handle_event.register
     def _(self, event: FrameBufferingEvent) -> Optional[VideoFrame]:
-        """If FrameBufferingEvent event received, then a frame has started to be acquired by the card. This method
-        starts the transfer of the available lines to a buffer in PC memory while the acquisition is still happening.
-         It then waits until all lines have been received (this query also frees the memory), copies the buffer contents
-         and returns the copy."""
-        self._device.start_a_frame_transfer(self._transfer_buffer)
-        timestamp = self._device.frame_info.buffering_start_time
-        self._wait_for_transfer_to_complete(timeout_ms=2000)
+        """If FrameBufferingEvent event received, then a frame has started to be acquired by the card. This event is
+        only subscribed to in LOW_LATENCY mode. This method starts the transfer of the available lines to a buffer in
+        PC memory while the acquisition is still happening. It then waits until all lines have been received (this query
+        also frees the memory), copies the buffer contents and returns the copy."""
+        transfer_started_timestamp = self._device.start_a_frame_transfer(self._transfer_buffer)
+        buffering_started_timestamp = self._device.frame_info.buffering_start_time
+        self._wait_for_frame_or_chunk_transfer_to_complete(timeout_ms=2000)
         wait_start_t = time.perf_counter()
         while (
             self._device.transfer_status.num_lines_transferred < self._device.frame_properties.dimensions.rows
             and (time.perf_counter() - wait_start_t) < 1
         ):
-            # this marks the buffer memory as free
             pass
+        transfer_complete_timestamp = datetime.now()
+        buffering_complete_timestamp = self._device.frame_info.buffering_complete_time
 
-        return self._format_frame(timestamp)
+        return self._format_frame(
+            timestamps=VideoFrameTimestamps(
+                transfer_started=transfer_started_timestamp,
+                transfer_complete=transfer_complete_timestamp,
+                buffering_started=buffering_started_timestamp,
+                buffering_complete=buffering_complete_timestamp,
+            )
+        )
 
     @_handle_event.register
     def _(self, event: SignalChangeEvent) -> None:
         """If a SignalChangeEvent is received, then the source signal has changed and no frame is available."""
         print("Frame grabber signal change detected")
 
-    def _format_frame(self, timestamp: datetime) -> VideoFrame:
+    def _format_frame(self, timestamps: VideoFrameTimestamps) -> VideoFrame:
         """Copy the contents of the transfer buffer, and return it as a VideoFrame."""
         # Copy the acquired frame
         string_buffer = string_at(self._transfer_buffer, self._device.frame_properties.size_in_bytes)
         frame = VideoFrame(
             string_buffer,
             dimensions=self._device.frame_properties.dimensions,
-            timestamp=timestamp,
+            timestamps=timestamps,
         )
         return frame
 
-    def _wait_for_transfer_to_complete(self, timeout_ms: int) -> None:
+    def _wait_for_frame_or_chunk_transfer_to_complete(self, timeout_ms: int) -> datetime:
         """Waits until a whole frame (or chunk of a frame in low latency mode) has been transferred to the buffer in
         PC memory."""
         try:
             wait_for_event(self._device.events.transfer_complete, timeout_ms=timeout_ms)
+            return datetime.now()
         except WaitForEventTimeout as e:
             self.shutdown()
             raise e

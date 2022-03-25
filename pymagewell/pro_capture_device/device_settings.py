@@ -120,11 +120,13 @@ class AspectRatio:
 
 class TransferMode(Enum):
     TIMER = 0
-    """ Transferred are triggered by a timer event from the driver"""
+    """ Transferred are triggered by a software timer event, allowing arbitrary frame rates."""
     NORMAL = 1
-    """ Transfers are triggered by a notification received from the device when a frame has been grabbed"""
+    """ Transfers are triggered by a notification received from the device when a frame has been received, and therefore
+    grabbing happens at the source frame rate"""
     LOW_LATENCY = 2
-    """ Transfers are triggered by a notification received from the device when a chunk of a frame has been grabbed"""
+    """ Transfers are triggered by a notification received from the device when the first chunk of a frame has been
+    received. Grabbing happens at the source frame rate, but with a lower latency."""
 
 
 @dataclass

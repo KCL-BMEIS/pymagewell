@@ -1,3 +1,4 @@
+from copy import copy
 from ctypes import Array, c_char
 from datetime import datetime
 from operator import mod
@@ -5,7 +6,9 @@ from threading import Thread
 from time import monotonic, sleep
 from typing import Optional
 
-from numpy import random, uint8
+from cv2 import circle, FONT_HERSHEY_SIMPLEX, putText, LINE_AA
+from numpy import uint8, zeros
+from numpy.typing import NDArray
 
 from pymagewell.events.device_events import (
     TransferCompleteEvent,
@@ -59,6 +62,8 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
         self._events.timer_event.register(Notification(0, 0))
 
         self._mock_timer = MockTimer(self._events.timer_event, MOCK_FRAME_RATE_HZ)
+
+        self._mock_frame = create_mock_frame()
 
     @property
     def events(self) -> ProCaptureEvents:
@@ -120,13 +125,76 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
         self._is_grabbing = False
 
     def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> datetime:
-        random_ints = (255 * random.rand(self.frame_properties.size_in_bytes)).astype(uint8).tobytes()
-        frame_buffer[: self.frame_properties.size_in_bytes] = random_ints  # type: ignore
+        frame = copy(self._mock_frame)
+        putText(
+            frame,
+            str(datetime.now()),
+            (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2),
+            FONT_HERSHEY_SIMPLEX,
+            1,
+            (255, 255, 255),
+            LINE_AA,
+        )
+        frame_buffer[: self.frame_properties.size_in_bytes] = frame.tobytes()  # type: ignore
         self.events.transfer_complete.set()
         return datetime.now()
 
     def shutdown(self) -> None:
         self._is_grabbing = False
+
+
+def create_mock_frame() -> NDArray[uint8]:
+    frame = zeros((MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols, 3), dtype=uint8)
+
+    black_radius = MOCK_RESOLUTION.rows // 2
+    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), black_radius, (255, 255, 255))
+    putText(
+        frame,
+        "Black",
+        (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - black_radius),
+        FONT_HERSHEY_SIMPLEX,
+        1,
+        (255, 255, 255),
+        LINE_AA,
+    )
+
+    ch1_radius = MOCK_RESOLUTION.rows // 4
+    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), ch1_radius, (255, 0, 0))
+    putText(
+        frame,
+        "ch1",
+        (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - ch1_radius),
+        FONT_HERSHEY_SIMPLEX,
+        1,
+        (255, 0, 0),
+        LINE_AA,
+    )
+
+    ch2_radius = MOCK_RESOLUTION.rows // 6
+    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), ch2_radius, (0, 255, 0))
+    putText(
+        frame,
+        "ch2",
+        (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - ch2_radius),
+        FONT_HERSHEY_SIMPLEX,
+        1,
+        (0, 255, 0),
+        LINE_AA,
+    )
+
+    ch3_radius = MOCK_RESOLUTION.rows // 8
+    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), ch3_radius, (0, 0, 255))
+    putText(
+        frame,
+        "ch2",
+        (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - ch3_radius),
+        FONT_HERSHEY_SIMPLEX,
+        1,
+        (0, 0, 255),
+        LINE_AA,
+    )
+
+    return frame
 
 
 class MockTimer:

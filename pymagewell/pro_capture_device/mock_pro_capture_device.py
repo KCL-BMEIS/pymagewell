@@ -40,6 +40,9 @@ MOCK_RESOLUTION = ImageSizeInPixels(cols=1920, rows=1080)
 MOCK_ASPECT_RATIO = AspectRatio(hor=16, ver=9)
 MOCK_FRAME_RATE_HZ = 2
 
+MOCK_FRAME_FONT_SIZE = 1
+MOCK_FRAME_LINE_WIDTH = 1
+
 
 class MockProCaptureDevice(ProCaptureDeviceImpl):
     """Mocks a ProCaptureDevice. Primarily for use during CI. Does not require Magewell driver or hardware. Generates
@@ -131,8 +134,9 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
             str(datetime.now()),
             (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2),
             FONT_HERSHEY_SIMPLEX,
-            1,
+            MOCK_FRAME_FONT_SIZE,
             (255, 255, 255),
+            MOCK_FRAME_LINE_WIDTH,
             LINE_AA,
         )
         frame_buffer[: self.frame_properties.size_in_bytes] = frame.tobytes()  # type: ignore
@@ -146,15 +150,16 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
 def create_mock_frame() -> NDArray[uint8]:
     frame = zeros((MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols, 3), dtype=uint8)
 
-    black_radius = MOCK_RESOLUTION.rows // 2
-    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), black_radius, (255, 255, 255))
+    white_radius = MOCK_RESOLUTION.rows // 2
+    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), white_radius, (255, 255, 255))
     putText(
         frame,
-        "Black",
-        (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - black_radius),
+        "White",
+        (MOCK_RESOLUTION.cols // 2 - white_radius, MOCK_RESOLUTION.rows // 2),
         FONT_HERSHEY_SIMPLEX,
-        1,
+        MOCK_FRAME_FONT_SIZE,
         (255, 255, 255),
+        MOCK_FRAME_LINE_WIDTH,
         LINE_AA,
     )
 
@@ -165,8 +170,9 @@ def create_mock_frame() -> NDArray[uint8]:
         "ch1",
         (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - ch1_radius),
         FONT_HERSHEY_SIMPLEX,
-        1,
+        MOCK_FRAME_FONT_SIZE,
         (255, 0, 0),
+        MOCK_FRAME_LINE_WIDTH,
         LINE_AA,
     )
 
@@ -177,8 +183,9 @@ def create_mock_frame() -> NDArray[uint8]:
         "ch2",
         (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - ch2_radius),
         FONT_HERSHEY_SIMPLEX,
-        1,
+        MOCK_FRAME_FONT_SIZE,
         (0, 255, 0),
+        MOCK_FRAME_LINE_WIDTH,
         LINE_AA,
     )
 
@@ -186,11 +193,12 @@ def create_mock_frame() -> NDArray[uint8]:
     circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), ch3_radius, (0, 0, 255))
     putText(
         frame,
-        "ch2",
+        "ch3",
         (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - ch3_radius),
         FONT_HERSHEY_SIMPLEX,
-        1,
+        MOCK_FRAME_FONT_SIZE,
         (0, 0, 255),
+        MOCK_FRAME_LINE_WIDTH,
         LINE_AA,
     )
 

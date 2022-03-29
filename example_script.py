@@ -7,12 +7,12 @@ from pymagewell.pro_capture_controller import ProCaptureController
 from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, TransferMode
 from pymagewell.pro_capture_device.mock_pro_capture_device import MockProCaptureDevice
 
-MOCK_MODE = False
+MOCK_MODE = True
 
 if __name__ == '__main__':
 
     device_settings = ProCaptureSettings()
-    device_settings.transfer_mode = TransferMode.LOW_LATENCY
+    device_settings.transfer_mode = TransferMode.TIMER
     if MOCK_MODE:
         device = MockProCaptureDevice(device_settings)
     else:

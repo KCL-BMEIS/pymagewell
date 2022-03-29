@@ -1,8 +1,9 @@
 from dataclasses import dataclass
 from datetime import datetime
+from typing import cast
 
-from PIL import Image
-from numpy import array, uint8
+from cv2 import imdecode, IMREAD_COLOR
+from numpy import uint8, frombuffer
 from numpy.typing import NDArray
 
 from pymagewell.pro_capture_device.device_settings import (
@@ -24,12 +25,5 @@ class VideoFrame:
     dimensions: ImageSizeInPixels
     timestamps: VideoFrameTimestamps
 
-    def as_pillow_image(self) -> Image.Image:
-        return Image.frombuffer(
-            mode="RGB",  # it's actually BGR but pillow doesn't support this
-            size=(self.dimensions.cols, self.dimensions.rows),
-            data=self.string_buffer,
-        )
-
     def as_array(self) -> NDArray[uint8]:
-        return array(self.as_pillow_image())
+        return cast(NDArray[uint8], imdecode(frombuffer(self.string_buffer, uint8), IMREAD_COLOR))

@@ -1,36 +1,45 @@
 from cv2 import imshow, waitKey
 from numpy import array, diff
 
-import versioneer
-from pymagewell.pro_capture_device import ProCaptureDevice
-from pymagewell.pro_capture_controller import ProCaptureController
-from pymagewell.pro_capture_device.device_settings import ProCaptureSettings, TransferMode
-from pymagewell.pro_capture_device.mock_pro_capture_device import MockProCaptureDevice
+from pymagewell import ProCaptureDevice, ProCaptureController, ProCaptureSettings, TransferMode, MockProCaptureDevice, \
+    ImageSizeInPixels, ColourFormat
 
 MOCK_MODE = True
 
 if __name__ == '__main__':
 
-    device_settings = ProCaptureSettings()
-    device_settings.transfer_mode = TransferMode.TIMER
+    # Configure the device
+    device_settings = ProCaptureSettings(
+        dimensions=ImageSizeInPixels(1920, 1080),
+        color_format=ColourFormat.BGR24,
+        transfer_mode=TransferMode.TIMER
+    )
+
+    # Create a device object
     if MOCK_MODE:
         device = MockProCaptureDevice(device_settings)
     else:
         device = ProCaptureDevice(device_settings)
+
+    # Create a controller to start the device
     controller = ProCaptureController(device)
 
-    print(f'pymagewell version {versioneer.get_version()}')
     print('PRESS Q TO QUIT!')
-
     counter = 0
     timestamps = []
     while True:
-        frame = controller.transfer_when_ready()
+        # Use the controller to transfer frames from the device to the PC when they are ready.
+        # This will block until a frame is ready or ‘timeout_ms’ is reached.
+        frame = controller.transfer_when_ready(timeout_ms=1000)
         timestamps.append(frame.timestamps)
+
+        # Here we are using OpenCV to display the acquired frames
         imshow("video", frame.as_array())
         if waitKey(1) & 0xFF == ord('q'):
             break
-        if counter % 20 == 19:
+
+        # Every 60 frames, print some timing information
+        if counter % 60 == 59:
             transfer_complete_timestamps = array([t.transfer_complete for t in timestamps])
             mean_period = array([p.total_seconds() for p in diff(transfer_complete_timestamps)]).mean()
             print(f'Average frame rate over last 20 frames: {1 / mean_period} Hz')
@@ -40,4 +49,6 @@ if __name__ == '__main__':
             print(f'Average frame acquisition latency over last 20 frames: {mean_latency * 1e3} ms')
 
         counter += 1
+
+    # Stop transfer and grabbing
     controller.shutdown()

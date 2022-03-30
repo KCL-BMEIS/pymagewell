@@ -4,7 +4,7 @@ Python library for interfacing with Magewell ProCapture frame grabbers
 ### Example of use
 First, create a `ProCaptureSettings` dataclass:
 ```python
-from pymagewell.pro_capture_device.device_settings import (
+from pymagewell import (
     ProCaptureSettings, ImageSizeInPixels, TransferMode, ColourFormat
 )
 
@@ -18,13 +18,13 @@ device_settings = ProCaptureSettings(
 Then create a `ProCaptureDevice` (or `MockProCaptureDevice` for testing on a system without a grabber) configured with
 your chosen settings:
 ```python
-from pymagewell.pro_capture_device import ProCaptureDevice
+from pymagewell import ProCaptureDevice
 
 device = ProCaptureDevice(settings=device_settings)
 ```
 Then create a `ProCaptureDeviceController` to transfer frames from the device to your PC:
 ```python
-from pymagewell.pro_capture_controller import ProCaptureController
+from pymagewell import ProCaptureController
 
 controller = ProCaptureController(device)
 ```

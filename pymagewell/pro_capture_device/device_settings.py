@@ -56,6 +56,7 @@ DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS = 1e-7
 
 
 class ColourFormat(Enum):
+    """ Enumeration of the supported colour formats. """
     UNK = MWFOURCC_UNK
     GREY = MWFOURCC_GREY
     Y800 = MWFOURCC_Y800
@@ -119,6 +120,7 @@ class AspectRatio:
 
 
 class TransferMode(Enum):
+    """ Enumeration of the supported methods for triggering the transfer of frames to the PC. """
     TIMER = 0
     """ Transferred are triggered by a software timer event, allowing arbitrary frame rates. This is the only mode
         supported by MockProCaptureDevice. """
@@ -173,6 +175,7 @@ class FrameTimeCode:
 
 @dataclass
 class ProCaptureSettings:
+    """ Settings for the ProCapture device. """
     dimensions: ImageSizeInPixels = ImageSizeInPixels(1920, 1080)
     """The dimensions of the frames to be acquired in pixels."""
     color_format: ColourFormat = ColourFormat.BGR24

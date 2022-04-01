@@ -8,6 +8,7 @@ It is based on (and includes) Magewell's Windows SDK and is therefore Windows on
 that for testing and development that does not depend on the SDK's Windows .dll files, so `pymagwell` can also be
 installed on macOS and Linux.
 
+* [GitHub page](https://github.com/KCL-BMEIS/pymagewell)
 * [API reference documentation](https://kcl-bmeis.github.io/pymagewell/)
 * [PyPI page](https://pypi.org/project/pymagewell/)
 

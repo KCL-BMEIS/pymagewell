@@ -120,10 +120,11 @@ class AspectRatio:
 
 class TransferMode(Enum):
     TIMER = 0
-    """ Transferred are triggered by a software timer event, allowing arbitrary frame rates."""
+    """ Transferred are triggered by a software timer event, allowing arbitrary frame rates. This is the only mode
+        supported by MockProCaptureDevice. """
     NORMAL = 1
-    """ Transfers are triggered by a notification received from the device when a frame has been received, and therefore
-    grabbing happens at the source frame rate"""
+    """ Transfers are triggered by a notification received from the device when a whole frame has been received, and
+    therefore grabbing happens at the source frame rate."""
     LOW_LATENCY = 2
     """ Transfers are triggered by a notification received from the device when the first chunk of a frame has been
     received. Grabbing happens at the source frame rate, but with a lower latency."""
@@ -173,12 +174,16 @@ class FrameTimeCode:
 @dataclass
 class ProCaptureSettings:
     dimensions: ImageSizeInPixels = ImageSizeInPixels(1920, 1080)
-    color_format: ColourFormat = ColourFormat.BGR24  # Color format of captured video frames.
+    """The dimensions of the frames to be acquired in pixels."""
+    color_format: ColourFormat = ColourFormat.BGR24
+    """The colour format of the frames to be acquired."""
     transfer_mode: TransferMode = TransferMode.NORMAL
+    """The method to use for transferring frames from the device to the PC. See `TransferMode` for details."""
     num_lines_per_chunk: int = 64
+    """The number of lines of a frame to transfer at a time (for `TransferMode.LOW_LATENCY` transfers)."""
 
     def __post_init__(self) -> None:
-        check_valid_chunk_size(self.num_lines_per_chunk)
+        _check_valid_chunk_size(self.num_lines_per_chunk)
 
     @property
     def min_stride(self) -> int:
@@ -200,7 +205,7 @@ class ProCaptureSettings:
             )
 
 
-def check_valid_chunk_size(n_lines_per_chunk: int) -> None:
+def _check_valid_chunk_size(n_lines_per_chunk: int) -> None:
     if n_lines_per_chunk < 64:
         raise ValueError("Minimum number of lines per chunk is 64.")
     elif round(math.log2(n_lines_per_chunk)) != math.log2(n_lines_per_chunk):

@@ -1,6 +1,9 @@
+import logging
 from typing import Any
 
-print("win32api and win32 event packages not available. pymagewell will only work with MockProCaptureDevice.")
+logger = logging.getLogger(__name__)
+
+logger.warning("win32api and win32 event packages not available. pymagewell will only work with MockProCaptureDevice.")
 
 WAIT_OBJECT_0 = 0
 

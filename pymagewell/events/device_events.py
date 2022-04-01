@@ -31,7 +31,7 @@ class FrameBufferedEvent(RegisterableEvent):
 
 
 class TimerEvent(RegisterableEvent):
-    """The driver provides a timer function to acquire frames at a custom rate. The FrameTimer configures the driver
+    """The driver provides a timer function to acquire frames at a custom rate. The _FrameTimer configures the driver
     to raise this event when the timer ticks/"""
 
     @property

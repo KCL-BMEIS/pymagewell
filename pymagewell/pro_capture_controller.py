@@ -1,3 +1,4 @@
+import logging
 import time
 from ctypes import create_string_buffer, string_at
 from datetime import datetime
@@ -17,17 +18,31 @@ from pymagewell.exceptions import ProCaptureError, WaitForEventTimeout
 from pymagewell.video_frame import VideoFrame, VideoFrameTimestamps
 from pymagewell.pro_capture_device.device_settings import TransferMode
 
+logger = logging.getLogger(__name__)
+
 
 class ProCaptureController:
-    """Controls the transfer of frames from ProCaptureDevice to the PC."""
+    """ProCaptureController controls the transfer of frames from a ProCaptureDevice or MockProCaptureDevice to a PC."""
 
     def __init__(self, device: ProCaptureDeviceInterface):
+        """
+        Args:
+            device (ProCaptureDeviceInterface): The implementation of ProCaptureDeviceInterface to use for frame
+              transfer. ProCaptureDevice or MockProCaptureDevice are both valid implementations.
+        """
         self._device = device
         self._transfer_buffer = create_string_buffer(3840 * 2160 * 4)
         self._device.start_grabbing()
 
     def transfer_when_ready(self, timeout_ms: int = 2000) -> VideoFrame:
-        """Wait for a frame to be ready for transfer, and then transfer it. This is a blocking call."""
+        """transfer_when_ready wait for the device to be ready to start transferring, transfers it and returns it.
+
+        This method will block until the frame has been transferred or the timeout has been reached.
+
+        In TransferMode.TIMER and TransferMode.NORMAL, frame transfer will start after a whole frame has been grabbed
+          by the device. In TransferMode.LOW_LATENCY, frame transfer will start after a frame has started to be
+          buffered onto the device.
+        """
         if self._device.transfer_mode == TransferMode.TIMER:
             self._device.schedule_timer_event()
         event = self._wait_for_event(timeout_ms=timeout_ms)
@@ -131,7 +146,7 @@ class ProCaptureController:
     @_handle_event.register
     def _(self, event: SignalChangeEvent) -> None:
         """If a SignalChangeEvent is received, then the source signal has changed and no frame is available."""
-        print("Frame grabber signal change detected")
+        logger.info("Frame grabber signal change detected")
 
     def _format_frame(self, timestamps: VideoFrameTimestamps) -> VideoFrame:
         """Copy the contents of the transfer buffer, and return it as a VideoFrame."""
@@ -155,5 +170,6 @@ class ProCaptureController:
             raise e
 
     def shutdown(self) -> None:
+        """Shuts down the frame grabber device."""
         self._device.stop_grabbing()
         self._device.shutdown()

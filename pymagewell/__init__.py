@@ -1,3 +1,10 @@
+"""
+`pymagewell` is a Python library for interfacing with Magewell ProCapture frame grabbers.
+
+It is based on (and includes) Magewell's Windows SDK and is therefore Windows only. However, it provides a mock class
+that for testing and development that does not depend on the SDK's Windows .dll files, so `pymagwell` can also be
+installed on macOS and Linux.
+"""
 from . import _version
 from .pro_capture_controller import ProCaptureController
 

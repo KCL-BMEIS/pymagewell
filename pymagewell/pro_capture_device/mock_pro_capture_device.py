@@ -1,4 +1,3 @@
-from copy import copy
 from ctypes import Array, c_char
 from datetime import datetime
 from operator import mod
@@ -42,6 +41,7 @@ MOCK_FRAME_RATE_HZ = 2
 
 MOCK_FRAME_FONT_SIZE = 1
 MOCK_FRAME_LINE_WIDTH = 1
+NUM_TEST_FRAMES = 10
 
 
 class MockProCaptureDevice(ProCaptureDeviceImpl):
@@ -66,7 +66,19 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
 
         self._mock_timer = MockTimer(self._events.timer_event, MOCK_FRAME_RATE_HZ)
 
-        self._mock_frame = create_mock_frame()
+        self._frame_counter: int = 0
+        self._mock_frames = [create_mock_frame() for _ in range(NUM_TEST_FRAMES)]
+        for i, frame in enumerate(self._mock_frames):
+            putText(
+                frame,
+                str(i),
+                (frame.shape[1] // 2, frame.shape[0] // 2),
+                FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                1,
+                LINE_AA,
+            )
 
     @property
     def events(self) -> ProCaptureEvents:
@@ -128,19 +140,11 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
         self._is_grabbing = False
 
     def start_a_frame_transfer(self, frame_buffer: Array[c_char]) -> datetime:
-        frame = copy(self._mock_frame)
-        putText(
-            frame,
-            str(datetime.now()),
-            (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2),
-            FONT_HERSHEY_SIMPLEX,
-            MOCK_FRAME_FONT_SIZE,
-            (255, 255, 255),
-            MOCK_FRAME_LINE_WIDTH,
-            LINE_AA,
-        )
-        frame_buffer[: self.frame_properties.size_in_bytes] = frame.tobytes()  # type: ignore
+        frame_buffer[: self.frame_properties.size_in_bytes] = self._mock_frames[  # type: ignore
+            self._frame_counter % NUM_TEST_FRAMES
+        ].tobytes()
         self.events.transfer_complete.set()
+        self._frame_counter += 1
         return datetime.now()
 
     def shutdown(self) -> None:
@@ -150,12 +154,25 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
 def create_mock_frame() -> NDArray[uint8]:
     frame = zeros((MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols, 3), dtype=uint8)
 
-    white_radius = MOCK_RESOLUTION.rows // 2
-    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), white_radius, (255, 255, 255))
+    white_fit_width_radius = MOCK_RESOLUTION.cols // 2
+    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), white_fit_width_radius, (255, 255, 255))
     putText(
         frame,
         "White",
-        (MOCK_RESOLUTION.cols // 2 - white_radius, MOCK_RESOLUTION.rows // 2),
+        (MOCK_RESOLUTION.cols // 2 - white_fit_width_radius, MOCK_RESOLUTION.rows // 2),
+        FONT_HERSHEY_SIMPLEX,
+        MOCK_FRAME_FONT_SIZE,
+        (255, 255, 255),
+        MOCK_FRAME_LINE_WIDTH,
+        LINE_AA,
+    )
+
+    white_fit_height_radius = MOCK_RESOLUTION.rows // 2
+    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), white_fit_height_radius, (255, 255, 255))
+    putText(
+        frame,
+        "White",
+        (MOCK_RESOLUTION.cols // 2 - white_fit_height_radius, MOCK_RESOLUTION.rows // 2),
         FONT_HERSHEY_SIMPLEX,
         MOCK_FRAME_FONT_SIZE,
         (255, 255, 255),

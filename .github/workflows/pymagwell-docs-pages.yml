@@ -1,0 +1,45 @@
+name: pymagewell-docs-pages
+
+on:
+  push:
+    tags:
+    - '*'
+
+jobs:
+  build-docs:
+
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+      with:
+        fetch-depth: 0
+    - name: Set up Python 3.10
+      uses: actions/setup-python@v2
+      with:
+        python-version: "3.10"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        python -m pip install .[doc]
+    - name: Create doc pages and commit to docs branch
+      run: |
+        git config --local user.name "crnbaker"
+        git config --local user.email "christian.baker@kcl.ac.uk"
+        git fetch
+        git status
+        git checkout ${{ github.ref_name }}
+        git branch ${{ github.ref_name }}-branch
+        git checkout docs
+        git status
+        git rebase ${{ github.ref_name }}-branch
+        export PYMAGEWELL_VERSION=${{ github.ref_name }}
+        source generate_docs.sh
+        git add .
+        git commit -m 'Automatic documentation update ${{ github.ref_name }}'
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: docs
+        force: true
+

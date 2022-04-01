@@ -17,7 +17,7 @@
             <input id="togglestate" type="checkbox">
             <div>
 
-    <h2>pymagewell v0.1.dev21</h2>
+    <h2>pymagewell v0.1.2</h2>
 
 
                     <h2>Contents</h2>
@@ -309,7 +309,7 @@
     </ul>
 
 
-    <footer>pymagewell v0.1.dev21</footer>
+    <footer>pymagewell v0.1.2</footer>
 
                     <a class="attribution" title="pdoc: Python API documentation generator" href="https://pdoc.dev">
                         built with <span class="visually-hidden">pdoc</span><img
@@ -330,6 +330,7 @@ that for testing and development that does not depend on the SDK's Windows .dll 
 installed on macOS and Linux.</p>
 
 <ul>
+<li><a href="https://github.com/KCL-BMEIS/pymagewell">GitHub page</a></li>
 <li><a href="https://kcl-bmeis.github.io/pymagewell/">API reference documentation</a></li>
 <li><a href="https://pypi.org/project/pymagewell/">PyPI page</a></li>
 </ul>
@@ -357,6 +358,7 @@ installed on macOS and Linux.</p>
 <span class="sd">that for testing and development that does not depend on the SDK&#39;s Windows .dll files, so `pymagwell` can also be</span>
 <span class="sd">installed on macOS and Linux.</span>
 
+<span class="sd">* [GitHub page](https://github.com/KCL-BMEIS/pymagewell)</span>
 <span class="sd">* [API reference documentation](https://kcl-bmeis.github.io/pymagewell/)</span>
 <span class="sd">* [PyPI page](https://pypi.org/project/pymagewell/)</span>
 
@@ -1706,6 +1708,7 @@ transfer. ProCaptureDevice or MockProCaptureDevice are both valid implementation
             <summary>View Source</summary>
             <div class="codehilite"><pre><span></span><span class="nd">@dataclass</span>
 <span class="k">class</span> <span class="nc">ProCaptureSettings</span><span class="p">:</span>
+    <span class="sd">&quot;&quot;&quot; Settings for the ProCapture device. &quot;&quot;&quot;</span>
     <span class="n">dimensions</span><span class="p">:</span> <span class="n">ImageSizeInPixels</span> <span class="o">=</span> <span class="n">ImageSizeInPixels</span><span class="p">(</span><span class="mi">1920</span><span class="p">,</span> <span class="mi">1080</span><span class="p">)</span>
     <span class="sd">&quot;&quot;&quot;The dimensions of the frames to be acquired in pixels.&quot;&quot;&quot;</span>
     <span class="n">color_format</span><span class="p">:</span> <span class="n">ColourFormat</span> <span class="o">=</span> <span class="n">ColourFormat</span><span class="o">.</span><span class="n">BGR24</span>
@@ -1740,7 +1743,7 @@ transfer. ProCaptureDevice or MockProCaptureDevice are both valid implementation
 
         </details>
 
-            <div class="docstring"><p>ProCaptureSettings(dimensions: <a href="#pro_capture_device.device_settings.ImageSizeInPixels">pymagewell.pro_capture_device.device_settings.ImageSizeInPixels</a> = ImageSizeInPixels(cols=1920, rows=1080), color_format: <a href="#pro_capture_device.device_settings.ColourFormat">pymagewell.pro_capture_device.device_settings.ColourFormat</a> = <<a href="#ColourFormat.BGR24">ColourFormat.BGR24</a>: 542263106>, transfer_mode: <a href="#pro_capture_device.device_settings.TransferMode">pymagewell.pro_capture_device.device_settings.TransferMode</a> = <<a href="#TransferMode.NORMAL">TransferMode.NORMAL</a>: 1>, num_lines_per_chunk: int = 64)</p>
+            <div class="docstring"><p>Settings for the ProCapture device.</p>
 </div>
 
 
@@ -1835,6 +1838,7 @@ transfer. ProCaptureDevice or MockProCaptureDevice are both valid implementation
                 <details>
             <summary>View Source</summary>
             <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="nc">TransferMode</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Enumeration of the supported methods for triggering the transfer of frames to the PC. &quot;&quot;&quot;</span>
     <span class="n">TIMER</span> <span class="o">=</span> <span class="mi">0</span>
     <span class="sd">&quot;&quot;&quot; Transferred are triggered by a software timer event, allowing arbitrary frame rates. This is the only mode</span>
 <span class="sd">        supported by MockProCaptureDevice. &quot;&quot;&quot;</span>
@@ -1848,7 +1852,7 @@ transfer. ProCaptureDevice or MockProCaptureDevice are both valid implementation
 
         </details>
 
-            <div class="docstring"><p>An enumeration.</p>
+            <div class="docstring"><p>Enumeration of the supported methods for triggering the transfer of frames to the PC.</p>
 </div>
 
 
@@ -1947,6 +1951,7 @@ received. Grabbing happens at the source frame rate, but with a lower latency.</
                 <details>
             <summary>View Source</summary>
             <div class="codehilite"><pre><span></span><span class="k">class</span> <span class="nc">ColourFormat</span><span class="p">(</span><span class="n">Enum</span><span class="p">):</span>
+    <span class="sd">&quot;&quot;&quot; Enumeration of the supported colour formats. &quot;&quot;&quot;</span>
     <span class="n">UNK</span> <span class="o">=</span> <span class="n">MWFOURCC_UNK</span>
     <span class="n">GREY</span> <span class="o">=</span> <span class="n">MWFOURCC_GREY</span>
     <span class="n">Y800</span> <span class="o">=</span> <span class="n">MWFOURCC_Y800</span>
@@ -1993,7 +1998,7 @@ received. Grabbing happens at the source frame rate, but with a lower latency.</
 
         </details>
 
-            <div class="docstring"><p>An enumeration.</p>
+            <div class="docstring"><p>Enumeration of the supported colour formats.</p>
 </div>
 
 

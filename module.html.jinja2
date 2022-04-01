@@ -1,0 +1,9 @@
+{% extends "default/module.html.jinja2" %}
+
+{% block nav_footer %}
+    <footer>pymagewell {{ env["PYMAGEWELL_VERSION"] | default("0.0.0") }}</footer>
+{% endblock %}
+
+{% block nav_title %}
+    <h2>pymagewell {{ env["PYMAGEWELL_VERSION"] | default("0.0.0") }}</h2>
+{% endblock %}

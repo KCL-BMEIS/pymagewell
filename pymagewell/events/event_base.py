@@ -1,8 +1,15 @@
 from abc import ABC, abstractmethod
 from typing import Optional, Any, List
 
-import win32api
-import win32event
+
+try:
+    import win32api
+    import win32event
+except ModuleNotFoundError as e:
+    try:
+        from pymagewell.events import mock_win32api as win32api, mock_win32event as win32event
+    except ModuleNotFoundError:
+        raise e
 
 from pymagewell.events.notification import Notification
 from pymagewell.exceptions import ProCaptureError, WaitForEventTimeout

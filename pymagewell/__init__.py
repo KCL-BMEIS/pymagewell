@@ -7,5 +7,12 @@ from .pro_capture_device.mock_pro_capture_device import MockProCaptureDevice
 
 __version__ = _version.get_versions()["version"]  # type: ignore
 
-__all__ = ['ProCaptureDevice', 'MockProCaptureDevice', 'ProCaptureController', 'ProCaptureSettings', 'TransferMode',
-           'ImageSizeInPixels', 'ColourFormat']
+__all__ = [
+    "ProCaptureDevice",
+    "MockProCaptureDevice",
+    "ProCaptureController",
+    "ProCaptureSettings",
+    "TransferMode",
+    "ImageSizeInPixels",
+    "ColourFormat",
+]

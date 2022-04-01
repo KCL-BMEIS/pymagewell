@@ -7,6 +7,21 @@
 It is based on (and includes) Magewell's Windows SDK and is therefore Windows only. However, it provides a mock class
 that for testing and development that does not depend on the SDK's Windows .dll files, so `pymagwell` can also be
 installed on macOS and Linux.
+
+* [API reference documentation](https://kcl-bmeis.github.io/pymagewell/)
+* [PyPI page](https://pypi.org/project/pymagewell/)
+
+### Installation
+
+```bash
+pip install pymagewell
+```
+
+### Example of use
+
+A full working example is provided in
+[`example_script.py`](https://github.com/KCL-BMEIS/pymagewell/blob/main/example_script.py).
+
 """
 from . import _version
 from .pro_capture_controller import ProCaptureController

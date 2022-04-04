@@ -11,8 +11,13 @@ installed on macOS and Linux.
 
 ### Installation
 
+From PyPI:
 ```bash
 pip install pymagewell
+```
+From conda-forge (Windows and macOS only):
+```bash
+conda install -c conda-forge pymagewell
 ```
 
 ### Example of use

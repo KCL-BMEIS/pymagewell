@@ -107,13 +107,13 @@ class ImageCoordinateInPixels:
     col: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class ImageSizeInPixels:
     cols: int
     rows: int
 
 
-@dataclass
+@dataclass(frozen=True)
 class AspectRatio:
     hor: int
     ver: int

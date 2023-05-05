@@ -50,7 +50,7 @@ NUM_TEST_FRAMES = 10
 
 class MockProCaptureDevice(ProCaptureDeviceImpl):
     """MockProCaptureDevice is intended to be used during testing, development and CI in the absence of a hardware frame
-    grabber or Magwell Windows SDK. Does not require Magewell driver or hardware.
+    grabber or Magewell Windows SDK. Does not require Magewell driver or hardware.
 
     Only TransferMode.Timer is supported.
 

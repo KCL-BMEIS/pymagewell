@@ -26,28 +26,31 @@ A full working example is provided in
 [`example_script.py`](https://github.com/KCL-BMEIS/pymagewell/blob/main/example_script.py).
 
 First, create a `ProCaptureSettings` dataclass:
+
 ```python
-from pymagewell import (
+from src.pymagewell import (
     ProCaptureSettings, ImageSizeInPixels, TransferMode, ColourFormat
 )
 
 device_settings = ProCaptureSettings(
     dimensions=ImageSizeInPixels(1920, 1080),
     color_format=ColourFormat.BGR24,  # Color format of captured video frames
-    transfer_mode = TransferMode.LOW_LATENCY,
-    num_lines_per_chunk = 64  # has effect only in low latency mode
+    transfer_mode=TransferMode.LOW_LATENCY,
+    num_lines_per_chunk=64  # has effect only in low latency mode
 )
 ```
 Then create a `ProCaptureDevice` (or `MockProCaptureDevice` for testing on a system without a grabber) configured with
 your chosen settings:
+
 ```python
-from pymagewell import ProCaptureDevice
+from src.pymagewell import ProCaptureDevice
 
 device = ProCaptureDevice(settings=device_settings)
 ```
 Then create a `ProCaptureDeviceController` to transfer frames from the device to your PC:
+
 ```python
-from pymagewell import ProCaptureController
+from src.pymagewell import ProCaptureController
 
 controller = ProCaptureController(device)
 ```

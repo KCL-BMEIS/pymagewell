@@ -1,6 +1,6 @@
 include versioneer.py
-include pymagewell/_version.py
-include pymagewell/py.typed
-include mwcapture/bin/x64/*.dll
-include mwcapture/bin/x86/*.dll
-include mwcapture/README.md
+include src/pymagewell/_version.py
+include src/pymagewell/py.typed
+include src/mwcapture/bin/x64/*.dll
+include src/mwcapture/bin/x86/*.dll
+include src/mwcapture/README.md

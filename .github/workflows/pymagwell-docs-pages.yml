@@ -35,7 +35,7 @@ jobs:
         export PYMAGEWELL_VERSION=${{ github.ref_name }}
         source generate_docs.sh
         git add .
-        git commit -m 'Automatic documentation update ${{ github.ref_name }}'
+        git commit --allow-empty -m 'Automatic documentation update ${{ github.ref_name }}'
     - name: Push changes
       uses: ad-m/github-push-action@master
       with:

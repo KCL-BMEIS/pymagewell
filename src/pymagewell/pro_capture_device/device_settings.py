@@ -1,14 +1,18 @@
 import math
+import struct
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import cast
+
+from cv2 import VideoWriter_fourcc
 
 from mwcapture.libmwcapture import (
     fourcc_calc_min_stride,
     MWFOURCC_NV12,
     fourcc_calc_image_size,
     MWFOURCC_BGR24,
+    fourcc_get_bpp,
     mwcap_smpte_timecode,
     MWFOURCC_UNK,
     MWFOURCC_GREY,
@@ -56,7 +60,8 @@ DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS = 1e-7
 
 
 class ColourFormat(Enum):
-    """ Enumeration of the supported colour formats. """
+    """Enumeration of the supported colour formats."""
+
     UNK = MWFOURCC_UNK
     GREY = MWFOURCC_GREY
     Y800 = MWFOURCC_Y800
@@ -100,6 +105,28 @@ class ColourFormat(Enum):
     RGB10 = MWFOURCC_RGB10
     BGR10 = MWFOURCC_BGR10
 
+    @property
+    def fourcc_string(self) -> str:
+        return struct.pack("<I", self.value).decode("utf-8")
+
+    @property
+    def bits_per_pixel(self) -> int:
+        return cast(int, fourcc_get_bpp(self.value))  # type: ignore
+
+    @property
+    def num_channels(self) -> int:
+        if self in [ColourFormat.Y8, ColourFormat.Y16, ColourFormat.Y800, ColourFormat.GREY]:
+            return 1
+        elif "A" in self.fourcc_string:
+            return 4
+        else:
+            return 3
+
+
+def is_colour_format_supported(colour_format: ColourFormat) -> bool:
+    fourcc_int = VideoWriter_fourcc(*colour_format.fourcc_string)
+    return cast(int, fourcc_int) != -1
+
 
 @dataclass
 class ImageCoordinateInPixels:
@@ -120,7 +147,8 @@ class AspectRatio:
 
 
 class TransferMode(Enum):
-    """ Enumeration of the supported methods for triggering the transfer of frames to the PC. """
+    """Enumeration of the supported methods for triggering the transfer of frames to the PC."""
+
     TIMER = 0
     """ Transferred are triggered by a software timer event, allowing arbitrary frame rates. This is the only mode
         supported by MockProCaptureDevice. """
@@ -175,7 +203,8 @@ class FrameTimeCode:
 
 @dataclass
 class ProCaptureSettings:
-    """ Settings for the ProCapture device. """
+    """Settings for the ProCapture device."""
+
     dimensions: ImageSizeInPixels = ImageSizeInPixels(1920, 1080)
     """The dimensions of the frames to be acquired in pixels."""
     color_format: ColourFormat = ColourFormat.BGR24

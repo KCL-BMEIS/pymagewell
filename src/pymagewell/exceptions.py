@@ -4,3 +4,7 @@ class ProCaptureError(Exception):
 
 class WaitForEventTimeout(ProCaptureError):
     pass
+
+
+class UnsupportedColourFormat(Exception):
+    pass

@@ -156,6 +156,7 @@ class ProCaptureController:
             string_buffer,
             dimensions=self._device.frame_properties.dimensions,
             timestamps=timestamps,
+            format=self._device.frame_properties.format,
         )
         return frame
 

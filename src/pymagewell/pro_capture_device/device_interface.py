@@ -21,12 +21,14 @@ from pymagewell.pro_capture_device.device_status import (
     SignalStatus,
     TransferStatus,
 )
+from pymagewell.pro_capture_device.device_settings import ColourFormat
 
 
 @dataclass
 class FrameProperties:
     dimensions: ImageSizeInPixels
     size_in_bytes: int
+    format: ColourFormat
 
 
 @dataclass

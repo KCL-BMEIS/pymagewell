@@ -1,5 +1,6 @@
 from abc import ABC
 
+from pymagewell.exceptions import UnsupportedColourFormat
 from pymagewell.pro_capture_device.device_interface import (
     ProCaptureDeviceInterface,
     FrameProperties,
@@ -7,6 +8,7 @@ from pymagewell.pro_capture_device.device_interface import (
 from pymagewell.pro_capture_device.device_settings import (
     TransferMode,
     ProCaptureSettings,
+    is_colour_format_supported,
 )
 
 
@@ -15,6 +17,10 @@ class ProCaptureDeviceImpl(ProCaptureDeviceInterface, ABC):
     of the Events system, and therefore are common to Mock and Real implementations of the interface."""
 
     def __init__(self, settings: ProCaptureSettings):
+        if not is_colour_format_supported(settings.color_format):
+            raise UnsupportedColourFormat(
+                "The chosen ColourFormat (ProCaptureSettings.colour_format) is not supported by OpenCV on your system."
+            )
         self._settings = settings
 
     @property
@@ -23,7 +29,11 @@ class ProCaptureDeviceImpl(ProCaptureDeviceInterface, ABC):
 
     @property
     def frame_properties(self) -> FrameProperties:
-        return FrameProperties(dimensions=self._settings.dimensions, size_in_bytes=self._settings.image_size_in_bytes)
+        return FrameProperties(
+            dimensions=self._settings.dimensions,
+            size_in_bytes=self._settings.image_size_in_bytes,
+            format=self._settings.color_format,
+        )
 
     @property
     def fps(self) -> float:

@@ -1,14 +1,18 @@
 import math
+import struct
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import cast
+
+from numpy import floor, uint16, uint8
 
 from mwcapture.libmwcapture import (
     fourcc_calc_min_stride,
     MWFOURCC_NV12,
     fourcc_calc_image_size,
     MWFOURCC_BGR24,
+    fourcc_get_bpp,
     mwcap_smpte_timecode,
     MWFOURCC_UNK,
     MWFOURCC_GREY,
@@ -56,7 +60,8 @@ DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS = 1e-7
 
 
 class ColourFormat(Enum):
-    """ Enumeration of the supported colour formats. """
+    """Enumeration of the supported colour formats."""
+
     UNK = MWFOURCC_UNK
     GREY = MWFOURCC_GREY
     Y800 = MWFOURCC_Y800
@@ -72,7 +77,7 @@ class ColourFormat(Enum):
     BGR24 = MWFOURCC_BGR24
     BGRA = MWFOURCC_BGRA
     ABGR = MWFOURCC_ABGR
-    MNV16 = MWFOURCC_NV16
+    NV16 = MWFOURCC_NV16
     NV61 = MWFOURCC_NV61
     I422 = MWFOURCC_I422
     YV16 = MWFOURCC_YV16
@@ -100,6 +105,86 @@ class ColourFormat(Enum):
     RGB10 = MWFOURCC_RGB10
     BGR10 = MWFOURCC_BGR10
 
+    @property
+    def fourcc_string(self) -> str:
+        return struct.pack("<I", self.value).decode("utf-8")
+
+    @property
+    def bits_per_pixel(self) -> int:
+        return cast(int, fourcc_get_bpp(self.value))  # type: ignore
+
+    @property
+    def num_channels(self) -> int:
+        if self in [ColourFormat.Y8, ColourFormat.Y16, ColourFormat.Y800, ColourFormat.GREY]:
+            return 1
+        elif "A" in self.fourcc_string:
+            return 4
+        else:
+            return 3
+
+    @property
+    def is_rgb_type(self) -> bool:
+        return {"R", "G", "B"}.issubset(set(list(self.name)))
+
+    def as_ffmpeg_pixel_format(self) -> str:
+        return ffmpeg_pixel_formats[self]
+
+    @property
+    def pixel_dtype(self) -> type:
+        bits_per_sample_per_channel = int(floor(self.bits_per_pixel / self.num_channels))
+        if bits_per_sample_per_channel <= 8:
+            return uint8
+        elif bits_per_sample_per_channel <= 16:
+            return uint16
+        else:
+            raise ValueError("ColourFormat has unrecognised structure.")
+
+
+ffmpeg_pixel_formats = {
+    ColourFormat.UNK: "0",
+    ColourFormat.GREY: "gray",  # no conversion required
+    ColourFormat.Y800: "gray8",  # no conversion required
+    ColourFormat.Y8: "gray8",  # no conversion required
+    ColourFormat.Y16: "gray16le",  # no conversion required
+    ColourFormat.RGB15: "rgb555le",  # done manually
+    ColourFormat.RGB16: "rgb565le",  # done manually
+    ColourFormat.RGB24: "rgb24",  # no conversion required
+    ColourFormat.RGBA: "rgba",
+    ColourFormat.ARGB: "argb",
+    ColourFormat.BGR15: "bgr555le",  # done manually
+    ColourFormat.BGR16: "bgr565le",  # done manually
+    ColourFormat.BGR24: "bgr24",  # no conversion required
+    ColourFormat.BGRA: "bgra",
+    ColourFormat.ABGR: "abgr",
+    ColourFormat.NV16: "nv16",
+    ColourFormat.NV61: "nv61",
+    ColourFormat.I422: "yuv422p",  # broken
+    ColourFormat.YV16: "yuv422p",  # broken
+    ColourFormat.YUY2: "yuyv422",  # needs conversion
+    ColourFormat.YUYV: "yuyv422",  # needs conversion
+    ColourFormat.UYVY: "uyvy422",  # needs conversion
+    ColourFormat.YVYU: "yvyu422",  # needs conversion
+    ColourFormat.VYUY: "vyuy422",  # broken
+    ColourFormat.I420: "yuv420p",  # broken
+    ColourFormat.IYUV: "yuv420p",  # broken
+    ColourFormat.NV12: "nv12",  # broken
+    ColourFormat.YV12: "yuv420p",  # broken
+    ColourFormat.NV21: "nv21",  # broken
+    ColourFormat.P010: "p010le",  # broken
+    ColourFormat.P210: "p210le",  # broken
+    ColourFormat.IYU2: "yuva422p",  # needs conversion
+    ColourFormat.V308: "rgb48le",  # broken
+    ColourFormat.AYUV: "yuva444p",  # needs conversion
+    ColourFormat.UYVA: "yuva444p",  # needs conversion
+    ColourFormat.V408: "yuva444p16le",  # broken
+    ColourFormat.VYUA: "yuva444p16le",  # broken
+    ColourFormat.V210: "v210",  # broken
+    ColourFormat.Y410: "yuva444p10le",  # broken
+    ColourFormat.V410: "yuva444p10le",  # broken
+    ColourFormat.RGB10: "x2rgb10le",  # needs conversion
+    ColourFormat.BGR10: "x2bgr10le",  # needs conversion
+}
+
 
 @dataclass
 class ImageCoordinateInPixels:
@@ -120,7 +205,8 @@ class AspectRatio:
 
 
 class TransferMode(Enum):
-    """ Enumeration of the supported methods for triggering the transfer of frames to the PC. """
+    """Enumeration of the supported methods for triggering the transfer of frames to the PC."""
+
     TIMER = 0
     """ Transferred are triggered by a software timer event, allowing arbitrary frame rates. This is the only mode
         supported by MockProCaptureDevice. """
@@ -175,7 +261,8 @@ class FrameTimeCode:
 
 @dataclass
 class ProCaptureSettings:
-    """ Settings for the ProCapture device. """
+    """Settings for the ProCapture device."""
+
     dimensions: ImageSizeInPixels = ImageSizeInPixels(1920, 1080)
     """The dimensions of the frames to be acquired in pixels."""
     color_format: ColourFormat = ColourFormat.BGR24

@@ -3,6 +3,7 @@ from numpy import array, diff
 
 from pymagewell import ProCaptureDevice, ProCaptureController, ProCaptureSettings, TransferMode, MockProCaptureDevice, \
     ImageSizeInPixels, ColourFormat
+from pymagewell.conversion import convert_interleaved_yuv_to_rgb, convert_rgb10_to_array, convert_rgb16_to_array
 
 MOCK_MODE = True
 
@@ -11,7 +12,7 @@ if __name__ == '__main__':
     # Configure the device
     device_settings = ProCaptureSettings(
         dimensions=ImageSizeInPixels(1920, 1080),
-        color_format=ColourFormat.BGR24,
+        color_format=ColourFormat.RGB10,
         transfer_mode=TransferMode.TIMER
     )
 
@@ -33,8 +34,11 @@ if __name__ == '__main__':
         frame = controller.transfer_when_ready(timeout_ms=1000)
         timestamps.append(frame.timestamps)
 
-        # Here we are using OpenCV to display the acquired frames
-        imshow("video", frame.as_array())
+        # Here we are using OpenCV to display the acquired frames (flip channels because openCV expects BGR)
+
+        frame_array = convert_rgb10_to_array(frame.string_buffer, frame.dimensions)
+        imshow("video", frame_array)
+        # imshow("video", frame.as_array())  # [:, :, ::-1])
         if waitKey(1) & 0xFF == ord('q'):
             break
 

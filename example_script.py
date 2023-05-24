@@ -13,7 +13,7 @@ if __name__ == '__main__':
     # Configure the device
     device_settings = ProCaptureSettings(
         dimensions=ImageSizeInPixels(1920, 1080),
-        color_format=ColourFormat.RGBA,
+        color_format=ColourFormat.RGB24,
         transfer_mode=TransferMode.TIMER
     )
 
@@ -36,9 +36,7 @@ if __name__ == '__main__':
         timestamps.append(frame.timestamps)
 
         # Here we are using OpenCV to display the acquired frames after conversion to BGR numpy arrays
-        frame_array = convert_rgb_bytes_to_array(frame.string_buffer, frame.dimensions, device_settings.color_format,
-                                                 output_channel_order=RGBChannelOrder.BGR,
-                                                 output_alpha_location=AlphaChannelLocation.IGNORE)
+        frame_array = frame.as_array(channel_order=RGBChannelOrder.BGR)
         imshow("video", frame_array)
         if waitKey(1) & 0xFF == ord('q'):
             break

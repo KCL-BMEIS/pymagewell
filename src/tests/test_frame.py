@@ -65,7 +65,7 @@ def test_video_frame_grey_to_array(colour_format: ColourFormat) -> None:
 def _decode_and_compare(frame: VideoFrame, test_frame_array: NDArray[Union[uint8, uint16]]) -> None:
     frame_array = frame.as_array(channel_order=RGBChannelOrder.RGB, alpha_channel_location=AlphaChannelLocation.IGNORE)
     assert frame_array.size == test_frame_array.size
-    num_mismatched_elements = len(where(frame_array != test_frame_array))
+    num_mismatched_elements = len(where(frame_array.squeeze() != test_frame_array))
     percent_mismatched = 100 * (num_mismatched_elements / frame_array.size)
     assert percent_mismatched < 1.0
 

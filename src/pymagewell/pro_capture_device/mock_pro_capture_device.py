@@ -57,7 +57,10 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
     Only TransferMode.Timer is supported.
 
     The class generates test frames. The frame rate is limited to 2 frames per second because copying the mock frames
-    to a provided PC transfer buffer takes a surprisingly long time (~0.11s)."""
+    to a provided PC transfer buffer takes a surprisingly long time (~0.11s).
+
+    It's recommended to use ColourFormat.RGB24 only. You can use some other formats if you have ffmpeg installed, but
+    this is quite slow."""
 
     def __init__(self, settings: ProCaptureSettings):
         """
@@ -185,7 +188,7 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
 
 
 def create_mock_frame() -> NDArray[uint8]:
-    """Creates a mock frame. Used by MockProCaptureDevice."""
+    """Creates a mock frame in RGB24 format as a NumPy array. Used by MockProCaptureDevice."""
     rgb_frame = zeros((MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols, 3), dtype=uint8)
 
     white_fit_width_radius = MOCK_RESOLUTION.cols // 2

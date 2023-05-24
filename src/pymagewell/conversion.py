@@ -1,14 +1,12 @@
 import logging
 import subprocess
+from enum import Enum
 from typing import Tuple, Union
 
-import numba
-import numpy as np
-from cv2 import COLOR_YUV2BGR_I420, COLOR_YUV2BGR_IYUV, COLOR_YUV2BGR_NV12, COLOR_YUV2RGB_UYVY, cvtColor
-from numpy import uint16, uint8
+from numpy import delete, frombuffer, insert, stack, uint16, uint32, uint8
 from numpy.typing import NDArray
 
-from pymagewell.pro_capture_device.device_settings import ColourFormat, ImageSizeInPixels
+from pymagewell.pro_capture_device.device_settings import ColourFormat, ImageSizeInPixels, RGBChannelOrder
 from pymagewell.exceptions import FFMPEGNotAvailable
 
 
@@ -44,136 +42,75 @@ def transcode_image_bytes(
     return execute_ffmpeg_command(cmd, image_bytes)
 
 
-def bytes_to_yuv_array(
-    image_bytes: bytes, image_size: ImageSizeInPixels, current_format: ColourFormat
-) -> NDArray[Union[uint8, uint16]]:
-
-    if current_format.pixel_dtype == uint8:
-        bytes_per_pixel_per_channel = 1
-    elif current_format.pixel_dtype == uint16:
-        bytes_per_pixel_per_channel = 2
-    else:
-        raise ValueError(
-            f"Conversion to numpy for format {current_format} with dtype {current_format.pixel_dtype}" "not supported"
-        )
-
-    if current_format not in [ColourFormat.UYVY]:
-        if current_format.is_rgb_type:
-            logger.warning("Converting an RGB pixel format to YUV - this is slow!")
-        if current_format.pixel_dtype == uint8:
-            output_format = "yuv444p"
-        elif current_format.pixel_dtype == uint16:
-            output_format = "yuv444p16le"
-        else:
-            raise ValueError(
-                f"Conversion to numpy for format {current_format} with dtype {current_format.pixel_dtype}" "not supported"
-            )
-
-        image_bytes = transcode_image_bytes(image_bytes, image_size, current_format.as_ffmpeg_pixel_format(), output_format)
-    plane_length_in_bytes = image_size.rows * image_size.cols * bytes_per_pixel_per_channel
-
-    # Extract the Y, U, and V planes
-    y_plane = image_bytes[: plane_length_in_bytes]
-    u_plane = image_bytes[plane_length_in_bytes: plane_length_in_bytes * 2]
-    v_plane = image_bytes[plane_length_in_bytes * 2 : plane_length_in_bytes * 3]
-
-    # Reshape each plane into a 2D array of the appropriate size
-    y_array: NDArray[Union[uint8, uint16]] = np.frombuffer(y_plane, dtype=current_format.pixel_dtype).reshape(
-        (image_size.rows, image_size.cols)
-    )
-    u_array: NDArray[Union[uint8, uint16]] = np.frombuffer(u_plane, dtype=current_format.pixel_dtype).reshape(
-        (image_size.rows, image_size.cols)
-    )
-    v_array: NDArray[Union[uint8, uint16]] = np.frombuffer(v_plane, dtype=current_format.pixel_dtype).reshape(
-        (image_size.rows, image_size.cols)
-    )
-
-    # Stack the planes together to create a 3D numpy array
-    return np.stack((y_array, u_array, v_array), axis=-1)
-
-
-def bytes_to_grey_array(image_bytes: bytes, image_size: ImageSizeInPixels, current_format: ColourFormat
-) -> NDArray[Union[uint8, uint16]]:
-
-    if current_format not in [ColourFormat.GREY, ColourFormat.Y8, ColourFormat.Y800, ColourFormat.Y16]:
-        if not current_format.num_channels == 1:
-            logger.warning("Converting a non-Grey format to Grey - this is slow!")
-        if current_format.pixel_dtype == uint8:
-            output_format = "gray"
-        elif current_format.pixel_dtype == uint16:
-            output_format = "gray16le"
-        else:
-            raise ValueError(
-                f"Conversion to numpy for format {current_format} with dtype {current_format.pixel_dtype}" "not supported"
-            )
-
-        image_bytes = transcode_image_bytes(image_bytes, image_size, current_format.as_ffmpeg_pixel_format(), output_format)
-
-    image: NDArray[Union[uint8, uint16]] = np.frombuffer(image_bytes, dtype=current_format.pixel_dtype)
-    return image.reshape((image_size.rows, image_size.cols))
-
-
-def bytes_to_rgb_array(
-    image_bytes: bytes, image_size: ImageSizeInPixels, current_format: ColourFormat
-) -> NDArray[Union[uint8, uint16]]:
-
-    if current_format not in [ColourFormat.BGR24, ColourFormat.RGB24, ColourFormat.BGR10]:
-        if not current_format.is_rgb_type:
-            logger.warning("Converting a non-RGB pixel format to RGB - this is slow!")
-
-        if current_format.pixel_dtype == uint8:
-            output_format = "rgb24"
-        elif current_format.pixel_dtype == uint16:
-            output_format = "rgb48le"
-        else:
-            raise ValueError(
-                f"Conversion to numpy for format {current_format} with dtype {current_format.pixel_dtype}" "not supported"
-            )
-
-        image_bytes = transcode_image_bytes(image_bytes, image_size, current_format.as_ffmpeg_pixel_format(), output_format)
-
-    image: NDArray[Union[uint8, uint16]] = np.frombuffer(image_bytes, dtype=current_format.pixel_dtype)
-    return image.reshape((image_size.rows, image_size.cols, 3))
-
-
 def encode_rgb24_array(image: NDArray[uint8], to_format: ColourFormat) -> bytes:
+    """Use ffmpeg to convert an RGB24 numpy array to bytes representing a different pixel format. For use generating
+    mock frames in mock mode."""
     image_bytes = image.tobytes()
     dimensions = ImageSizeInPixels(rows=image.shape[0], cols=image.shape[1])
     desired_format = to_format.as_ffmpeg_pixel_format()
     return transcode_image_bytes(image_bytes, dimensions, "rgb24", desired_format)
 
 
-def convert_rgb16_to_array(image_bytes: bytes, image_size: ImageSizeInPixels) -> NDArray[uint8]:
+class AlphaChannelLocation(Enum):
+    LAST = -1
+    FIRST = 0
+    IGNORE = 2
+
+
+def convert_rgb_bytes_to_array(
+    image_bytes: bytes,
+    image_size: ImageSizeInPixels,
+    colour_format: ColourFormat,
+    output_channel_order: RGBChannelOrder,
+    output_alpha_location: AlphaChannelLocation,
+) -> NDArray[Union[uint8, uint16]]:
+
+    if colour_format in [ColourFormat.BGRA, ColourFormat.ABGR, ColourFormat.RGBA, ColourFormat.ARGB]:
+        image_array: NDArray[Union[uint8, uint16]] = convert_bgra_bytes_to_array(image_bytes, image_size)
+    elif colour_format in [ColourFormat.RGB24, ColourFormat.BGR24]:
+        image_array = convert_rgb24_bytes_to_array(image_bytes, image_size)
+    elif colour_format in [ColourFormat.RGB15, ColourFormat.BGR15]:
+        image_array = convert_rgb15_rgb16_to_array(image_bytes, image_size, bits_per_channel=(5, 5, 5))
+    elif colour_format in [ColourFormat.RGB16, ColourFormat.BGR16]:
+        image_array = convert_rgb15_rgb16_to_array(image_bytes, image_size, bits_per_channel=(5, 6, 5))
+    elif colour_format in [ColourFormat.RGB10, ColourFormat.BGR10]:
+        image_array = convert_rgb10_to_array(image_bytes, image_size)
+    else:
+        raise NotImplementedError(f"Conversion of {colour_format} frames to NumPy arrays not implemented")
+
+    if colour_format.has_alpha_channel:
+        alpha_channel: NDArray[Union[uint8, uint16]] = image_array[:, :, colour_format.alpha_channel_index]
+        colour_channels: NDArray[Union[uint8, uint16]] = delete(image_array, colour_format.alpha_channel_index, axis=2)
+    else:
+        colour_channels = image_array
+
+    if colour_format.channel_order() != output_channel_order:
+        colour_channels = colour_channels[:, :, ::-1]
+
+    if colour_format.has_alpha_channel and output_alpha_location != AlphaChannelLocation.IGNORE:
+        constructed_image_array = insert(colour_channels, output_alpha_location.value, alpha_channel, axis=2)
+    else:
+        constructed_image_array = colour_channels
+    return constructed_image_array
+
+
+def convert_rgb24_bytes_to_array(image_bytes: bytes, image_size: ImageSizeInPixels) -> NDArray[uint8]:
+    numpy_image = frombuffer(image_bytes, dtype=uint8, count=image_size.cols * image_size.rows * 3)
+    numpy_image.resize((image_size.rows, image_size.cols, 3))
+    return numpy_image
+
+
+def convert_bgra_bytes_to_array(image_bytes: bytes, image_size: ImageSizeInPixels) -> NDArray[uint8]:
+    numpy_image = frombuffer(image_bytes, dtype=uint8, count=image_size.cols * image_size.rows * 4)
+    numpy_image.resize((image_size.rows, image_size.cols, 4))
+    return numpy_image
+
+
+def convert_rgb15_rgb16_to_array(
+    image_bytes: bytes, image_size: ImageSizeInPixels, bits_per_channel: Tuple[int, int, int]
+) -> NDArray[uint8]:
     # Convert the bytes to a numpy array of uint16
-    image = np.frombuffer(image_bytes, dtype=np.uint16)
-
-    # Reshape the array to match the image dimensions
-    image = image.reshape((image_size.rows, image_size.cols))
-
-    # Extract the red, green, and blue channels
-    red = (image & 0b1111100000000000) >> 11
-    green = (image & 0b0000011111100000) >> 5
-    blue = image & 0b0000000000011111
-
-    # Convert the channels to uint8 by scaling them to the range [0, 255]
-    red = (red << 3) | (red >> 2)  # Scale up from 5 to 8 bits
-    green = (green << 2) | (green >> 4)  # Scale up from 6 to 8 bits
-    blue = (blue << 3) | (blue >> 2)  # Scale up from 5 to 8 bits
-
-    # Reshape the channels to match the image dimensions
-    red = red.reshape((image_size.rows, image_size.cols))
-    green = green.reshape((image_size.rows, image_size.cols))
-    blue = blue.reshape((image_size.rows, image_size.cols))
-
-    # Stack the channels to form the final RGB image
-    rgb_image = np.stack((red, green, blue), axis=-1)
-
-    return rgb_image.astype(uint8)
-
-
-def convert_rgb_to_array(image_bytes: bytes, image_size: ImageSizeInPixels, bits_per_channel: Tuple[int, int, int]) -> NDArray[uint8]:
-    # Convert the bytes to a numpy array of uint16
-    image = np.frombuffer(image_bytes, dtype=np.uint16)
+    image = frombuffer(image_bytes, dtype=uint16)
 
     # Reshape the array to match the image dimensions
     image = image.reshape((image_size.rows, image_size.cols))
@@ -197,9 +134,9 @@ def convert_rgb_to_array(image_bytes: bytes, image_size: ImageSizeInPixels, bits
     blue = blue.reshape((image_size.rows, image_size.cols))
 
     # Stack the channels to form the final RGB image
-    rgb_image = np.stack((red, green, blue), axis=-1)
-
-    return rgb_image.astype(np.uint8)
+    rgb_image = stack((red, green, blue), axis=-1)
+    rgb_image_uint8: NDArray[uint8] = rgb_image.astype(uint8)
+    return rgb_image_uint8
 
 
 def convert_rgb10_to_array(image_bytes: bytes, image_size: ImageSizeInPixels) -> NDArray[uint16]:
@@ -210,7 +147,7 @@ def convert_rgb10_to_array(image_bytes: bytes, image_size: ImageSizeInPixels) ->
     num_bytes = num_pixels * 4  # Each pixel requires 4 bytes (10 bits for each channel + 2 padding bits)
 
     # Convert the bytes to a numpy array of uint32
-    image = np.frombuffer(image_bytes[:num_bytes], dtype=np.uint32)
+    image = frombuffer(image_bytes[:num_bytes], dtype=uint32)
 
     # Reshape the array to match the image dimensions
     image = image.reshape((image_size.rows, image_size.cols))
@@ -231,6 +168,7 @@ def convert_rgb10_to_array(image_bytes: bytes, image_size: ImageSizeInPixels) ->
     blue = blue.reshape((image_size.rows, image_size.cols))
 
     # Stack the channels to form the final RGB image
-    rgb_image = np.stack((red, green, blue), axis=-1)
+    rgb_image = stack((red, green, blue), axis=-1)
+    rgb_image_uint16: NDArray[uint16] = rgb_image.astype(uint16)
 
-    return rgb_image.astype(np.uint16)
+    return rgb_image_uint16

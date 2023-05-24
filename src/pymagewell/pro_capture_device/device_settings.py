@@ -59,6 +59,17 @@ from mwcapture.libmwcapture import (
 DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS = 1e-7
 
 
+class ColourSpace(Enum):
+    GREY = 0
+    RGB = 1
+    YUV = 2
+
+
+class RGBChannelOrder(Enum):
+    RGB = 0
+    BGR = 1
+
+
 class ColourFormat(Enum):
     """Enumeration of the supported colour formats."""
 
@@ -114,17 +125,72 @@ class ColourFormat(Enum):
         return cast(int, fourcc_get_bpp(self.value))  # type: ignore
 
     @property
+    def has_alpha_channel(self) -> bool:
+        return "A" in self.fourcc_string
+
+    @property
     def num_channels(self) -> int:
         if self in [ColourFormat.Y8, ColourFormat.Y16, ColourFormat.Y800, ColourFormat.GREY]:
             return 1
-        elif "A" in self.fourcc_string:
+        elif self.has_alpha_channel:
             return 4
         else:
             return 3
 
     @property
-    def is_rgb_type(self) -> bool:
-        return {"R", "G", "B"}.issubset(set(list(self.name)))
+    def colour_space(self) -> ColourSpace:
+        if self in [ColourFormat.GREY, ColourFormat.Y800, ColourFormat.Y8, ColourFormat.Y16]:
+            return ColourSpace.GREY
+        elif self in [
+            ColourFormat.RGB24,
+            ColourFormat.RGB10,
+            ColourFormat.RGB15,
+            ColourFormat.RGB16,
+            ColourFormat.ARGB,
+            ColourFormat.RGBA,
+            ColourFormat.BGR24,
+            ColourFormat.BGR10,
+            ColourFormat.BGR15,
+            ColourFormat.BGR16,
+            ColourFormat.ABGR,
+            ColourFormat.BGRA,
+        ]:
+            return ColourSpace.RGB
+        else:
+            return ColourSpace.YUV
+
+    def channel_order(self) -> RGBChannelOrder:
+        if self.colour_space != ColourSpace.RGB:
+            raise NotImplementedError("Channel order property only implemented for RGB colour formats")
+        if self in [
+            ColourFormat.RGB24,
+            ColourFormat.ARGB,
+            ColourFormat.RGBA,
+            ColourFormat.RGB15,
+            ColourFormat.RGB16,
+            ColourFormat.RGB10,
+        ]:
+            return RGBChannelOrder.RGB
+        elif self in [
+            ColourFormat.BGR24,
+            ColourFormat.ABGR,
+            ColourFormat.BGRA,
+            ColourFormat.BGR15,
+            ColourFormat.BGR16,
+            ColourFormat.BGR10,
+        ]:
+            return RGBChannelOrder.BGR
+        else:
+            raise NotImplementedError(f"Channel order property not implemented for colour format {self}.")
+
+    @property
+    def alpha_channel_index(self) -> int:
+        if not self.has_alpha_channel:
+            raise ValueError(f"Colour format {self} does not have an alpha channel")
+        alpha_index = self.fourcc_string.find("A")
+        if alpha_index == -1:
+            raise ValueError(f"Could not find index of alpha channel for colour format {self}")
+        return alpha_index
 
     def as_ffmpeg_pixel_format(self) -> str:
         return ffmpeg_pixel_formats[self]

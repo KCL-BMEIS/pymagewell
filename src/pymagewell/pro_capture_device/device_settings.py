@@ -63,6 +63,7 @@ class ColourSpace(Enum):
     GREY = 0
     RGB = 1
     YUV = 2
+    UNKNOWN = 3
 
 
 class RGBChannelOrder(Enum):
@@ -139,7 +140,9 @@ class ColourFormat(Enum):
 
     @property
     def colour_space(self) -> ColourSpace:
-        if self in [ColourFormat.GREY, ColourFormat.Y800, ColourFormat.Y8, ColourFormat.Y16]:
+        if self == ColourFormat.UNK:
+            return ColourSpace.UNKNOWN
+        elif self in [ColourFormat.GREY, ColourFormat.Y800, ColourFormat.Y8, ColourFormat.Y16]:
             return ColourSpace.GREY
         elif self in [
             ColourFormat.RGB24,
@@ -193,10 +196,14 @@ class ColourFormat(Enum):
         return alpha_index
 
     def as_ffmpeg_pixel_format(self) -> str:
+        if self == ColourFormat.UNK:
+            raise ValueError("Colour format not known")
         return ffmpeg_pixel_formats[self]
 
     @property
     def pixel_dtype(self) -> type:
+        if self == ColourFormat.UNK:
+            raise ValueError("Colour format not known")
         bits_per_sample_per_channel = int(floor(self.bits_per_pixel / self.num_channels))
         if bits_per_sample_per_channel <= 8:
             return uint8
@@ -208,47 +215,47 @@ class ColourFormat(Enum):
 
 ffmpeg_pixel_formats = {
     ColourFormat.UNK: "0",
-    ColourFormat.GREY: "gray",  # no conversion required
-    ColourFormat.Y800: "gray8",  # no conversion required
-    ColourFormat.Y8: "gray8",  # no conversion required
-    ColourFormat.Y16: "gray16le",  # no conversion required
-    ColourFormat.RGB15: "rgb555le",  # done manually
-    ColourFormat.RGB16: "rgb565le",  # done manually
-    ColourFormat.RGB24: "rgb24",  # no conversion required
+    ColourFormat.GREY: "gray",
+    ColourFormat.Y800: "gray",
+    ColourFormat.Y8: "gray",
+    ColourFormat.Y16: "gray16le",
+    ColourFormat.RGB15: "rgb555le",
+    ColourFormat.RGB16: "rgb565le",
+    ColourFormat.RGB24: "rgb24",
     ColourFormat.RGBA: "rgba",
     ColourFormat.ARGB: "argb",
-    ColourFormat.BGR15: "bgr555le",  # done manually
-    ColourFormat.BGR16: "bgr565le",  # done manually
-    ColourFormat.BGR24: "bgr24",  # no conversion required
+    ColourFormat.BGR15: "bgr555le",
+    ColourFormat.BGR16: "bgr565le",
+    ColourFormat.BGR24: "bgr24",
     ColourFormat.BGRA: "bgra",
     ColourFormat.ABGR: "abgr",
     ColourFormat.NV16: "nv16",
     ColourFormat.NV61: "nv61",
-    ColourFormat.I422: "yuv422p",  # broken
-    ColourFormat.YV16: "yuv422p",  # broken
-    ColourFormat.YUY2: "yuyv422",  # needs conversion
-    ColourFormat.YUYV: "yuyv422",  # needs conversion
-    ColourFormat.UYVY: "uyvy422",  # needs conversion
-    ColourFormat.YVYU: "yvyu422",  # needs conversion
-    ColourFormat.VYUY: "vyuy422",  # broken
-    ColourFormat.I420: "yuv420p",  # broken
-    ColourFormat.IYUV: "yuv420p",  # broken
-    ColourFormat.NV12: "nv12",  # broken
-    ColourFormat.YV12: "yuv420p",  # broken
-    ColourFormat.NV21: "nv21",  # broken
-    ColourFormat.P010: "p010le",  # broken
-    ColourFormat.P210: "p210le",  # broken
-    ColourFormat.IYU2: "yuva422p",  # needs conversion
-    ColourFormat.V308: "rgb48le",  # broken
-    ColourFormat.AYUV: "yuva444p",  # needs conversion
-    ColourFormat.UYVA: "yuva444p",  # needs conversion
-    ColourFormat.V408: "yuva444p16le",  # broken
-    ColourFormat.VYUA: "yuva444p16le",  # broken
-    ColourFormat.V210: "v210",  # broken
-    ColourFormat.Y410: "yuva444p10le",  # broken
-    ColourFormat.V410: "yuva444p10le",  # broken
-    ColourFormat.RGB10: "x2rgb10le",  # needs conversion
-    ColourFormat.BGR10: "x2bgr10le",  # needs conversion
+    ColourFormat.I422: "yuv422p",
+    ColourFormat.YV16: "yuv422p",
+    ColourFormat.YUY2: "yuyv422",
+    ColourFormat.YUYV: "yuyv422",
+    ColourFormat.UYVY: "uyvy422",
+    ColourFormat.YVYU: "yvyu422",
+    ColourFormat.VYUY: "vyuy422",
+    ColourFormat.I420: "yuv420p",
+    ColourFormat.IYUV: "yuv420p",
+    ColourFormat.NV12: "nv12",
+    ColourFormat.YV12: "yuv420p",
+    ColourFormat.NV21: "nv21",
+    ColourFormat.P010: "p010le",
+    ColourFormat.P210: "p210le",
+    ColourFormat.IYU2: "yuva422p",
+    ColourFormat.V308: "rgb48le",
+    ColourFormat.AYUV: "yuva444p",
+    ColourFormat.UYVA: "yuva444p",
+    ColourFormat.V408: "yuva444p16le",
+    ColourFormat.VYUA: "yuva444p16le",
+    ColourFormat.V210: "v210",
+    ColourFormat.Y410: "yuva444p10le",
+    ColourFormat.V410: "yuva444p10le",
+    ColourFormat.RGB10: "x2rgb10le",
+    ColourFormat.BGR10: "x2bgr10le",
 }
 
 

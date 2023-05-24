@@ -6,7 +6,7 @@ from typing import Tuple, Union
 from numpy import delete, frombuffer, insert, stack, uint16, uint32, uint8
 from numpy.typing import NDArray
 
-from pymagewell.pro_capture_device.device_settings import ColourFormat, ImageSizeInPixels, RGBChannelOrder
+from pymagewell.pro_capture_device.device_settings import ColourFormat, ColourSpace, ImageSizeInPixels, RGBChannelOrder
 from pymagewell.exceptions import FFMPEGNotAvailable
 
 
@@ -59,6 +59,16 @@ class AlphaChannelLocation(Enum):
     IGNORE = 2
 
 
+def convert_grey_bytes_to_array(
+    image_bytes: bytes, image_size: ImageSizeInPixels, colour_format: ColourFormat
+) -> NDArray[Union[uint8, uint16]]:
+    if colour_format.colour_space != ColourSpace.GREY:
+        raise NotImplementedError(f"Conversion of {colour_format} frames to grey numpy arrays not implemented.")
+    return convert_unpacked_bytes_to_array(
+        image_bytes, image_size, colour_format.num_channels, colour_format.pixel_dtype
+    )
+
+
 def convert_rgb_bytes_to_array(
     image_bytes: bytes,
     image_size: ImageSizeInPixels,
@@ -67,11 +77,17 @@ def convert_rgb_bytes_to_array(
     output_alpha_location: AlphaChannelLocation,
 ) -> NDArray[Union[uint8, uint16]]:
 
-    if colour_format in [ColourFormat.BGRA, ColourFormat.ABGR, ColourFormat.RGBA, ColourFormat.ARGB, ColourFormat.RGB24,
-                         ColourFormat.BGR24]:
-        image_array: NDArray[Union[uint8, uint16]] = convert_unpacked_bytes_to_array(image_bytes, image_size,
-                                                                                     colour_format.num_channels,
-                                                                                     colour_format.pixel_dtype)
+    if colour_format in [
+        ColourFormat.BGRA,
+        ColourFormat.ABGR,
+        ColourFormat.RGBA,
+        ColourFormat.ARGB,
+        ColourFormat.RGB24,
+        ColourFormat.BGR24,
+    ]:
+        image_array: NDArray[Union[uint8, uint16]] = convert_unpacked_bytes_to_array(
+            image_bytes, image_size, colour_format.num_channels, colour_format.pixel_dtype
+        )
     elif colour_format in [ColourFormat.RGB15, ColourFormat.BGR15]:
         image_array = convert_rgb15_rgb16_to_array(image_bytes, image_size, bits_per_channel=(5, 5, 5))
     elif colour_format in [ColourFormat.RGB16, ColourFormat.BGR16]:
@@ -79,7 +95,7 @@ def convert_rgb_bytes_to_array(
     elif colour_format in [ColourFormat.RGB10, ColourFormat.BGR10]:
         image_array = convert_rgb10_to_array(image_bytes, image_size)
     else:
-        raise NotImplementedError(f"Conversion of {colour_format} frames to NumPy arrays not implemented")
+        raise NotImplementedError(f"Conversion of {colour_format} frames to RGB NumPy arrays not implemented")
 
     if colour_format.has_alpha_channel:
         alpha_channel: NDArray[Union[uint8, uint16]] = image_array[:, :, colour_format.alpha_channel_index]
@@ -97,11 +113,14 @@ def convert_rgb_bytes_to_array(
     return constructed_image_array
 
 
-def convert_unpacked_bytes_to_array(image_bytes: bytes, image_size: ImageSizeInPixels, num_channels: int, dtype: type) \
-        -> NDArray[Union[uint8, uint16]]:
+def convert_unpacked_bytes_to_array(
+    image_bytes: bytes, image_size: ImageSizeInPixels, num_channels: int, dtype: type
+) -> NDArray[Union[uint8, uint16]]:
     if dtype not in [uint8, uint16]:
         raise ValueError(f"dtype must be uint8 or uint16, not {dtype}")
-    numpy_image = frombuffer(image_bytes, dtype=dtype, count=image_size.cols * image_size.rows * num_channels)
+    numpy_image: NDArray[Union[uint8, uint16]] = frombuffer(
+        image_bytes, dtype=dtype, count=image_size.cols * image_size.rows * num_channels
+    )
     numpy_image.resize((image_size.rows, image_size.cols, num_channels))
     return numpy_image
 

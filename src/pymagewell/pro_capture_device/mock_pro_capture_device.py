@@ -255,12 +255,6 @@ def create_mock_frame() -> NDArray[uint8]:
 
     return rgb_frame
 
-    # try:
-    #     return VideoFrame.from_ndarray(rgb_frame, format='rgb24').to_ndarray(
-    #         format=colour_format.as_pyav_video_format().name)
-    # except ValueError:
-    #     raise UnsupportedColourFormat(colour_format.name, ffmpeg_pixel_formats[colour_format])
-
 
 class _MockTimer:
     def __init__(self, timer_event: TimerEvent, rate_hz: float):

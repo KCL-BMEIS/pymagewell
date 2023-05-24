@@ -13,7 +13,7 @@ from pymagewell.pro_capture_device.mock_pro_capture_device import MockProCapture
 
 
 @pytest.mark.usefixtures("hardware_mode")
-class TestEvents(TestCase):
+class TestDevice(TestCase):
     def setUp(self) -> None:
         device_settings = ProCaptureSettings()
         device_settings.transfer_mode = TransferMode.TIMER

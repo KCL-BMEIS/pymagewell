@@ -35,11 +35,11 @@ class VideoFrame:
         alpha_channel_location: AlphaChannelLocation = AlphaChannelLocation.IGNORE,
     ) -> NDArray[Union[uint8, uint16]]:
         """as_array
-            Decodes the bytes contained in VideoFrame.string_buffer into a numpy array. Only works for RGB colour space
-            ColourFormats (i.e. RGB24, RGB10, RGB15, RGB16, RGBA, ARGB and the BGR equivalents). By default, the alpha
-            channel is ignored and the colour channels are in BGR order (for compatability with openCV imshow). The
-            dtype of the resulting array is uint8 for all ColourFormats apart from BGR10 and RGB10, which have 10 bits
-            per-pixel-per-channel and therefore require uint16 values to maintain precision.
+            Decodes the bytes contained in VideoFrame.string_buffer into a 3D numpy array. Only works for RGB colour
+            space ColourFormats (i.e. RGB24, RGB10, RGB15, RGB16, RGBA, ARGB and the BGR equivalents). By default, the
+            alpha channel is ignored and the colour channels are in BGR order (for compatability with openCV imshow).
+            The dtype of the resulting array is uint8 for all ColourFormats apart from BGR10 and RGB10, which have 10
+            bits per-pixel-per-channel and therefore require uint16 values to maintain precision.
         Args:
             channel_order (RGBChannelOrder): The order of the R, G and B channels in the resulting array. Defaults to
                 RGBChannelOrder.BGR for compatibility with OpenCV imshow

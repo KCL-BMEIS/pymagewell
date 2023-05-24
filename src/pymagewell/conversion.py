@@ -47,6 +47,8 @@ def encode_rgb24_array(image: NDArray[uint8], to_format: ColourFormat) -> bytes:
     mock frames in mock mode."""
     image_bytes = image.tobytes()
     dimensions = ImageSizeInPixels(rows=image.shape[0], cols=image.shape[1])
+    if to_format in [ColourFormat.UNK, ColourFormat.NV16, ColourFormat.NV61, ColourFormat.VYUY, ColourFormat.V210]:
+        raise NotImplementedError(f"Encoding to {to_format} bytes has not been implemented.")
     desired_format = to_format.as_ffmpeg_pixel_format()
     return transcode_image_bytes(image_bytes, dimensions, "rgb24", desired_format)
 

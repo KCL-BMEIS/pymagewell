@@ -13,44 +13,51 @@ from pymagewell.exceptions import FFMPEGNotAvailable
 logger = logging.getLogger(__name__)
 
 
-def check_if_ffmpeg_available(message: str = "") -> None:
+class FFMPEG:
+    def __init__(self, failure_message: str = "") -> None:
+        try:
+            self._executable = "ffmpeg"
+            check_if_ffmpeg_available(self._executable, failure_message)
+        except FFMPEGNotAvailable:
+            self._executable = "C:/ffmpeg/bin/ffmpeg"
+            check_if_ffmpeg_available(self._executable, failure_message)
+
+    def execute_ffmpeg_command(self, cmd: str, input_bytes: bytes) -> bytes:
+        cmd = self._executable + " " + cmd
+        proc = subprocess.Popen(cmd.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        stdout, stderr = proc.communicate(input=input_bytes)
+        if proc.returncode != 0:
+            raise Exception(f"ffmpeg command failed with return code {proc.returncode}: {stderr.decode('utf-8')}")
+        return stdout
+
+    def transcode_image_bytes(
+        self, image_bytes: bytes, image_size: ImageSizeInPixels, current_format: str, desired_format: str
+    ) -> bytes:
+        if current_format == desired_format:
+            return image_bytes
+        dimensions_str = f"{image_size.cols}x{image_size.rows}"
+        cmd = (
+            f"-y -f rawvideo -s {dimensions_str} -pix_fmt {current_format} -i - "
+            f"-an -vcodec rawvideo -f rawvideo -pix_fmt {desired_format} -"
+        )
+        return self.execute_ffmpeg_command(cmd, image_bytes)
+
+    def encode_rgb24_array(self, image: NDArray[uint8], to_format: ColourFormat) -> bytes:
+        """Use ffmpeg to convert an RGB24 numpy array to bytes representing a different pixel format. For use generating
+        mock frames in mock mode."""
+        image_bytes = image.tobytes()
+        dimensions = ImageSizeInPixels(rows=image.shape[0], cols=image.shape[1])
+        if to_format in [ColourFormat.UNK, ColourFormat.NV16, ColourFormat.NV61, ColourFormat.VYUY, ColourFormat.V210]:
+            raise NotImplementedError(f"Encoding to {to_format} bytes has not been implemented.")
+        desired_format = to_format.as_ffmpeg_pixel_format()
+        return self.transcode_image_bytes(image_bytes, dimensions, "rgb24", desired_format)
+
+
+def check_if_ffmpeg_available(executable: str, message: str = "") -> None:
     try:
-        subprocess.run(["ffmpeg", "-version"], check=True, capture_output=True)
-    except subprocess.CalledProcessError:
+        subprocess.run([executable, "-version"], check=True, capture_output=True)
+    except (subprocess.CalledProcessError, FileNotFoundError):
         raise FFMPEGNotAvailable(message)
-
-
-def execute_ffmpeg_command(cmd: str, input_bytes: bytes) -> bytes:
-    check_if_ffmpeg_available()
-    proc = subprocess.Popen(cmd.split(), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-    stdout, stderr = proc.communicate(input=input_bytes)
-    if proc.returncode != 0:
-        raise Exception(f"ffmpeg command failed with return code {proc.returncode}: {stderr.decode('utf-8')}")
-    return stdout
-
-
-def transcode_image_bytes(
-    image_bytes: bytes, image_size: ImageSizeInPixels, current_format: str, desired_format: str
-) -> bytes:
-    if current_format == desired_format:
-        return image_bytes
-    dimensions_str = f"{image_size.cols}x{image_size.rows}"
-    cmd = (
-        f"ffmpeg -y -f rawvideo -s {dimensions_str} -pix_fmt {current_format} -i - "
-        f"-an -vcodec rawvideo -f rawvideo -pix_fmt {desired_format} -"
-    )
-    return execute_ffmpeg_command(cmd, image_bytes)
-
-
-def encode_rgb24_array(image: NDArray[uint8], to_format: ColourFormat) -> bytes:
-    """Use ffmpeg to convert an RGB24 numpy array to bytes representing a different pixel format. For use generating
-    mock frames in mock mode."""
-    image_bytes = image.tobytes()
-    dimensions = ImageSizeInPixels(rows=image.shape[0], cols=image.shape[1])
-    if to_format in [ColourFormat.UNK, ColourFormat.NV16, ColourFormat.NV61, ColourFormat.VYUY, ColourFormat.V210]:
-        raise NotImplementedError(f"Encoding to {to_format} bytes has not been implemented.")
-    desired_format = to_format.as_ffmpeg_pixel_format()
-    return transcode_image_bytes(image_bytes, dimensions, "rgb24", desired_format)
 
 
 class AlphaChannelLocation(Enum):
@@ -129,7 +136,7 @@ def convert_rgb15_rgb16_to_array(
     image_bytes: bytes, image_size: ImageSizeInPixels, bits_per_channel: Tuple[int, int, int]
 ) -> NDArray[uint8]:
     # Convert the bytes to a numpy array of uint16
-    image = frombuffer(image_bytes, dtype=uint16)
+    image: NDArray[uint16] = frombuffer(image_bytes, dtype=uint16)
 
     # Reshape the array to match the image dimensions
     image = image.reshape((image_size.rows, image_size.cols))
@@ -166,7 +173,7 @@ def convert_rgb10_to_array(image_bytes: bytes, image_size: ImageSizeInPixels) ->
     num_bytes = num_pixels * 4  # Each pixel requires 4 bytes (10 bits for each channel + 2 padding bits)
 
     # Convert the bytes to a numpy array of uint32
-    image = frombuffer(image_bytes[:num_bytes], dtype=uint32)
+    image: NDArray[uint32] = frombuffer(image_bytes[:num_bytes], dtype=uint32)
 
     # Reshape the array to match the image dimensions
     image = image.reshape((image_size.rows, image_size.cols))

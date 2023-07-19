@@ -10,7 +10,7 @@ from cv2 import circle, FONT_HERSHEY_SIMPLEX, putText, LINE_AA
 from numpy import uint8, zeros
 from numpy.typing import NDArray
 
-from pymagewell.conversion import check_if_ffmpeg_available, encode_rgb24_array
+from pymagewell.conversion import FFMPEG
 from pymagewell.events.device_events import (
     TransferCompleteEvent,
     SignalChangeEvent,
@@ -101,9 +101,9 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
         if self.frame_properties.format == ColourFormat.RGB24:
             self._mock_frames = [frame.tobytes() for frame in mock_frames_np_arrays]
         else:
-            check_if_ffmpeg_available("FFMPEG is required to use Mock mode with any colour format other than RGB24.")
+            ffmpeg = FFMPEG("FFMPEG is required to use Mock mode with any colour format other than RGB24.")
             self._mock_frames = [
-                encode_rgb24_array(frame, self.frame_properties.format) for frame in mock_frames_np_arrays
+                ffmpeg.encode_rgb24_array(frame, self.frame_properties.format) for frame in mock_frames_np_arrays
             ]
 
     @property
@@ -189,7 +189,7 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
 
 def create_mock_frame() -> NDArray[uint8]:
     """Creates a mock frame in RGB24 format as a NumPy array. Used by MockProCaptureDevice."""
-    rgb_frame = zeros((MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols, 3), dtype=uint8)
+    rgb_frame: NDArray[uint8] = zeros((MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols, 3), dtype=uint8)
 
     white_fit_width_radius = MOCK_RESOLUTION.cols // 2
     circle(rgb_frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), white_fit_width_radius, (255, 255, 255))

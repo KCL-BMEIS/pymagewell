@@ -3,10 +3,9 @@ from numpy import array, diff
 
 from pymagewell import ProCaptureDevice, ProCaptureController, ProCaptureSettings, TransferMode, MockProCaptureDevice, \
     ImageSizeInPixels, ColourFormat
-from pymagewell.conversion import AlphaChannelLocation, convert_rgb_bytes_to_array
 from pymagewell.pro_capture_device.device_settings import RGBChannelOrder
 
-MOCK_MODE = True
+MOCK_MODE = False
 
 if __name__ == '__main__':
 
@@ -14,7 +13,7 @@ if __name__ == '__main__':
     device_settings = ProCaptureSettings(
         dimensions=ImageSizeInPixels(1920, 1080),
         color_format=ColourFormat.RGB24,
-        transfer_mode=TransferMode.TIMER
+        transfer_mode=TransferMode.LOW_LATENCY
     )
 
     # Create a device object

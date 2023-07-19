@@ -4,12 +4,13 @@ from datetime import datetime
 from operator import mod
 from threading import Thread
 from time import monotonic, sleep
-from typing import Optional
+from typing import List, Optional
 
 from cv2 import circle, FONT_HERSHEY_SIMPLEX, putText, LINE_AA
 from numpy import uint8, zeros
 from numpy.typing import NDArray
 
+from pymagewell.conversion import FFMPEG
 from pymagewell.events.device_events import (
     TransferCompleteEvent,
     SignalChangeEvent,
@@ -20,6 +21,7 @@ from pymagewell.events.device_events import (
 from pymagewell.events.notification import Notification
 from pymagewell.pro_capture_device.device_interface import ProCaptureEvents
 from pymagewell.pro_capture_device.device_settings import (
+    ColourFormat,
     ProCaptureSettings,
     ImageSizeInPixels,
     AspectRatio,
@@ -55,7 +57,10 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
     Only TransferMode.Timer is supported.
 
     The class generates test frames. The frame rate is limited to 2 frames per second because copying the mock frames
-    to a provided PC transfer buffer takes a surprisingly long time (~0.11s)."""
+    to a provided PC transfer buffer takes a surprisingly long time (~0.11s).
+
+    It's recommended to use ColourFormat.RGB24 only. You can use some other formats if you have ffmpeg installed, but
+    this is quite slow."""
 
     def __init__(self, settings: ProCaptureSettings):
         """
@@ -80,8 +85,8 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
         self._mock_timer = _MockTimer(self._events.timer_event, MOCK_FRAME_RATE_HZ)
 
         self._frame_counter: int = 0
-        self._mock_frames = [create_mock_frame() for _ in range(NUM_TEST_FRAMES)]
-        for i, frame in enumerate(self._mock_frames):
+        mock_frames_np_arrays = [create_mock_frame() for _ in range(NUM_TEST_FRAMES)]
+        for i, frame in enumerate(mock_frames_np_arrays):
             putText(
                 frame,
                 str(i),
@@ -92,6 +97,14 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
                 1,
                 LINE_AA,
             )
+        self._mock_frames: List[bytes] = []
+        if self.frame_properties.format == ColourFormat.RGB24:
+            self._mock_frames = [frame.tobytes() for frame in mock_frames_np_arrays]
+        else:
+            ffmpeg = FFMPEG("FFMPEG is required to use Mock mode with any colour format other than RGB24.")
+            self._mock_frames = [
+                ffmpeg.encode_rgb24_array(frame, self.frame_properties.format) for frame in mock_frames_np_arrays
+            ]
 
     @property
     def events(self) -> ProCaptureEvents:
@@ -165,7 +178,7 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
         """
         frame_buffer[: self.frame_properties.size_in_bytes] = self._mock_frames[  # type: ignore
             self._frame_counter % NUM_TEST_FRAMES
-        ].tobytes()
+        ]
         self.events.transfer_complete.set()
         self._frame_counter += 1
         return datetime.now()
@@ -175,13 +188,13 @@ class MockProCaptureDevice(ProCaptureDeviceImpl):
 
 
 def create_mock_frame() -> NDArray[uint8]:
-    """Creates a mock frame. Used by MockProCaptureDevice."""
-    frame = zeros((MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols, 3), dtype=uint8)
+    """Creates a mock frame in RGB24 format as a NumPy array. Used by MockProCaptureDevice."""
+    rgb_frame: NDArray[uint8] = zeros((MOCK_RESOLUTION.rows, MOCK_RESOLUTION.cols, 3), dtype=uint8)
 
     white_fit_width_radius = MOCK_RESOLUTION.cols // 2
-    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), white_fit_width_radius, (255, 255, 255))
+    circle(rgb_frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), white_fit_width_radius, (255, 255, 255))
     putText(
-        frame,
+        rgb_frame,
         "White",
         (MOCK_RESOLUTION.cols // 2 - white_fit_width_radius, MOCK_RESOLUTION.rows // 2),
         FONT_HERSHEY_SIMPLEX,
@@ -192,9 +205,9 @@ def create_mock_frame() -> NDArray[uint8]:
     )
 
     white_fit_height_radius = MOCK_RESOLUTION.rows // 2
-    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), white_fit_height_radius, (255, 255, 255))
+    circle(rgb_frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), white_fit_height_radius, (255, 255, 255))
     putText(
-        frame,
+        rgb_frame,
         "White",
         (MOCK_RESOLUTION.cols // 2 - white_fit_height_radius, MOCK_RESOLUTION.rows // 2),
         FONT_HERSHEY_SIMPLEX,
@@ -205,10 +218,10 @@ def create_mock_frame() -> NDArray[uint8]:
     )
 
     ch1_radius = MOCK_RESOLUTION.rows // 4
-    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), ch1_radius, (255, 0, 0))
+    circle(rgb_frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), ch1_radius, (255, 0, 0))
     putText(
-        frame,
-        "ch1",
+        rgb_frame,
+        "red",
         (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - ch1_radius),
         FONT_HERSHEY_SIMPLEX,
         MOCK_FRAME_FONT_SIZE,
@@ -218,10 +231,10 @@ def create_mock_frame() -> NDArray[uint8]:
     )
 
     ch2_radius = MOCK_RESOLUTION.rows // 6
-    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), ch2_radius, (0, 255, 0))
+    circle(rgb_frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), ch2_radius, (0, 255, 0))
     putText(
-        frame,
-        "ch2",
+        rgb_frame,
+        "green",
         (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - ch2_radius),
         FONT_HERSHEY_SIMPLEX,
         MOCK_FRAME_FONT_SIZE,
@@ -231,10 +244,10 @@ def create_mock_frame() -> NDArray[uint8]:
     )
 
     ch3_radius = MOCK_RESOLUTION.rows // 8
-    circle(frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), ch3_radius, (0, 0, 255))
+    circle(rgb_frame, (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2), ch3_radius, (0, 0, 255))
     putText(
-        frame,
-        "ch3",
+        rgb_frame,
+        "blue",
         (MOCK_RESOLUTION.cols // 2, MOCK_RESOLUTION.rows // 2 - ch3_radius),
         FONT_HERSHEY_SIMPLEX,
         MOCK_FRAME_FONT_SIZE,
@@ -243,7 +256,7 @@ def create_mock_frame() -> NDArray[uint8]:
         LINE_AA,
     )
 
-    return frame
+    return rgb_frame
 
 
 class _MockTimer:

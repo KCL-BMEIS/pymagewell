@@ -61,9 +61,8 @@ blocking call.
 while True:
     frame = controller.transfer_when_ready()
 ```
-`VideoFrame` provides access to the pixels as Pillow image with its `as_pillow_image()` method, or a Numpy array with
-its `as_numpy_array` method. It also provides access to timestamps (datetime.datetime) describing the frame acquisition 
-process:
+`VideoFrame` provides access to the pixels as a Numpy array with its `as_array` method. It also provides access to
+timestamps (datetime.datetime) describing the frame acquisition process:
 ```python
 t1 = frame.timestamps.buffering_started  # time at which frame started being written to the hardware buffer
 buffer

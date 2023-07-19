@@ -1,14 +1,18 @@
 import math
+import struct
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
 from typing import cast
+
+from numpy import floor, uint16, uint8
 
 from mwcapture.libmwcapture import (
     fourcc_calc_min_stride,
     MWFOURCC_NV12,
     fourcc_calc_image_size,
     MWFOURCC_BGR24,
+    fourcc_get_bpp,
     mwcap_smpte_timecode,
     MWFOURCC_UNK,
     MWFOURCC_GREY,
@@ -55,8 +59,21 @@ from mwcapture.libmwcapture import (
 DEVICE_CLOCK_TICK_PERIOD_IN_SECONDS = 1e-7
 
 
+class ColourSpace(Enum):
+    GREY = 0
+    RGB = 1
+    YUV = 2
+    UNKNOWN = 3
+
+
+class RGBChannelOrder(Enum):
+    RGB = 0
+    BGR = 1
+
+
 class ColourFormat(Enum):
-    """ Enumeration of the supported colour formats. """
+    """Enumeration of the supported colour formats."""
+
     UNK = MWFOURCC_UNK
     GREY = MWFOURCC_GREY
     Y800 = MWFOURCC_Y800
@@ -72,7 +89,7 @@ class ColourFormat(Enum):
     BGR24 = MWFOURCC_BGR24
     BGRA = MWFOURCC_BGRA
     ABGR = MWFOURCC_ABGR
-    MNV16 = MWFOURCC_NV16
+    NV16 = MWFOURCC_NV16
     NV61 = MWFOURCC_NV61
     I422 = MWFOURCC_I422
     YV16 = MWFOURCC_YV16
@@ -100,6 +117,147 @@ class ColourFormat(Enum):
     RGB10 = MWFOURCC_RGB10
     BGR10 = MWFOURCC_BGR10
 
+    @property
+    def fourcc_string(self) -> str:
+        return struct.pack("<I", self.value).decode("utf-8")
+
+    @property
+    def bits_per_pixel(self) -> int:
+        return cast(int, fourcc_get_bpp(self.value))  # type: ignore
+
+    @property
+    def has_alpha_channel(self) -> bool:
+        return "A" in self.fourcc_string
+
+    @property
+    def num_channels(self) -> int:
+        if self in [ColourFormat.Y8, ColourFormat.Y16, ColourFormat.Y800, ColourFormat.GREY]:
+            return 1
+        elif self.has_alpha_channel:
+            return 4
+        else:
+            return 3
+
+    @property
+    def colour_space(self) -> ColourSpace:
+        if self == ColourFormat.UNK:
+            return ColourSpace.UNKNOWN
+        elif self in [ColourFormat.GREY, ColourFormat.Y800, ColourFormat.Y8, ColourFormat.Y16]:
+            return ColourSpace.GREY
+        elif self in [
+            ColourFormat.RGB24,
+            ColourFormat.RGB10,
+            ColourFormat.RGB15,
+            ColourFormat.RGB16,
+            ColourFormat.ARGB,
+            ColourFormat.RGBA,
+            ColourFormat.BGR24,
+            ColourFormat.BGR10,
+            ColourFormat.BGR15,
+            ColourFormat.BGR16,
+            ColourFormat.ABGR,
+            ColourFormat.BGRA,
+        ]:
+            return ColourSpace.RGB
+        else:
+            return ColourSpace.YUV
+
+    def channel_order(self) -> RGBChannelOrder:
+        if self.colour_space != ColourSpace.RGB:
+            raise NotImplementedError("Channel order property only implemented for RGB colour formats")
+        if self in [
+            ColourFormat.RGB24,
+            ColourFormat.ARGB,
+            ColourFormat.RGBA,
+            ColourFormat.RGB15,
+            ColourFormat.RGB16,
+            ColourFormat.RGB10,
+        ]:
+            return RGBChannelOrder.RGB
+        elif self in [
+            ColourFormat.BGR24,
+            ColourFormat.ABGR,
+            ColourFormat.BGRA,
+            ColourFormat.BGR15,
+            ColourFormat.BGR16,
+            ColourFormat.BGR10,
+        ]:
+            return RGBChannelOrder.BGR
+        else:
+            raise NotImplementedError(f"Channel order property not implemented for colour format {self}.")
+
+    @property
+    def alpha_channel_index(self) -> int:
+        if not self.has_alpha_channel:
+            raise ValueError(f"Colour format {self} does not have an alpha channel")
+        alpha_index = self.fourcc_string.find("A")
+        if alpha_index == -1:
+            raise ValueError(f"Could not find index of alpha channel for colour format {self}")
+        return alpha_index
+
+    def as_ffmpeg_pixel_format(self) -> str:
+        if self == ColourFormat.UNK:
+            raise ValueError("Colour format not known")
+        return ffmpeg_pixel_formats[self]
+
+    @property
+    def pixel_dtype(self) -> type:
+        if self == ColourFormat.UNK:
+            raise ValueError("Colour format not known")
+        bits_per_sample_per_channel = int(floor(self.bits_per_pixel / self.num_channels))
+        if bits_per_sample_per_channel <= 8:
+            return uint8
+        elif bits_per_sample_per_channel <= 16:
+            return uint16
+        else:
+            raise ValueError("ColourFormat has unrecognised structure.")
+
+
+ffmpeg_pixel_formats = {
+    ColourFormat.UNK: "0",
+    ColourFormat.GREY: "gray",
+    ColourFormat.Y800: "gray",
+    ColourFormat.Y8: "gray",
+    ColourFormat.Y16: "gray16le",
+    ColourFormat.RGB15: "rgb555le",
+    ColourFormat.RGB16: "rgb565le",
+    ColourFormat.RGB24: "rgb24",
+    ColourFormat.RGBA: "rgba",
+    ColourFormat.ARGB: "argb",
+    ColourFormat.BGR15: "bgr555le",
+    ColourFormat.BGR16: "bgr565le",
+    ColourFormat.BGR24: "bgr24",
+    ColourFormat.BGRA: "bgra",
+    ColourFormat.ABGR: "abgr",
+    ColourFormat.NV16: "nv16",
+    ColourFormat.NV61: "nv61",
+    ColourFormat.I422: "yuv422p",
+    ColourFormat.YV16: "yuv422p",
+    ColourFormat.YUY2: "yuyv422",
+    ColourFormat.YUYV: "yuyv422",
+    ColourFormat.UYVY: "uyvy422",
+    ColourFormat.YVYU: "yvyu422",
+    ColourFormat.VYUY: "vyuy422",
+    ColourFormat.I420: "yuv420p",
+    ColourFormat.IYUV: "yuv420p",
+    ColourFormat.NV12: "nv12",
+    ColourFormat.YV12: "yuv420p",
+    ColourFormat.NV21: "nv21",
+    ColourFormat.P010: "p010le",
+    ColourFormat.P210: "p210le",
+    ColourFormat.IYU2: "yuva422p",
+    ColourFormat.V308: "rgb48le",
+    ColourFormat.AYUV: "yuva444p",
+    ColourFormat.UYVA: "yuva444p",
+    ColourFormat.V408: "yuva444p16le",
+    ColourFormat.VYUA: "yuva444p16le",
+    ColourFormat.V210: "v210",
+    ColourFormat.Y410: "yuva444p10le",
+    ColourFormat.V410: "yuva444p10le",
+    ColourFormat.RGB10: "x2rgb10le",
+    ColourFormat.BGR10: "x2bgr10le",
+}
+
 
 @dataclass
 class ImageCoordinateInPixels:
@@ -120,7 +278,8 @@ class AspectRatio:
 
 
 class TransferMode(Enum):
-    """ Enumeration of the supported methods for triggering the transfer of frames to the PC. """
+    """Enumeration of the supported methods for triggering the transfer of frames to the PC."""
+
     TIMER = 0
     """ Transferred are triggered by a software timer event, allowing arbitrary frame rates. This is the only mode
         supported by MockProCaptureDevice. """
@@ -175,7 +334,8 @@ class FrameTimeCode:
 
 @dataclass
 class ProCaptureSettings:
-    """ Settings for the ProCapture device. """
+    """Settings for the ProCapture device."""
+
     dimensions: ImageSizeInPixels = ImageSizeInPixels(1920, 1080)
     """The dimensions of the frames to be acquired in pixels."""
     color_format: ColourFormat = ColourFormat.BGR24

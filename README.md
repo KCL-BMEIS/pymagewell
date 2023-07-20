@@ -28,7 +28,7 @@ A full working example is provided in
 First, create a `ProCaptureSettings` dataclass:
 
 ```python
-from src.pymagewell import (
+from pymagewell import (
     ProCaptureSettings, ImageSizeInPixels, TransferMode, ColourFormat
 )
 
@@ -43,14 +43,14 @@ Then create a `ProCaptureDevice` (or `MockProCaptureDevice` for testing on a sys
 your chosen settings:
 
 ```python
-from src.pymagewell import ProCaptureDevice
+from pymagewell import ProCaptureDevice
 
 device = ProCaptureDevice(settings=device_settings)
 ```
 Then create a `ProCaptureDeviceController` to transfer frames from the device to your PC:
 
 ```python
-from src.pymagewell import ProCaptureController
+from pymagewell import ProCaptureController
 
 controller = ProCaptureController(device)
 ```

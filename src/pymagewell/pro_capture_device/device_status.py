@@ -46,7 +46,7 @@ class SignalStatus:
     def from_mw_video_signal_status(cls, status: mw_video_signal_status) -> "SignalStatus":
         return SignalStatus(
             state=SignalState(status.state),
-            start_position=ImageCoordinateInPixels(col=status.cols, row=status.rows),
+            start_position=ImageCoordinateInPixels(col=status.x, row=status.y),
             image_dimensions=ImageSizeInPixels(cols=status.cx, rows=status.cy),
             total_dimensions=ImageSizeInPixels(cols=status.cxTotal, rows=status.cyTotal),
             interlaced=bool(status.bInterlaced),

@@ -1,7 +1,6 @@
 import platform
 import os
 from ctypes import *
-from win32 import win32event
 from pathlib import Path
 
 MW_SUCCEEDED = 0

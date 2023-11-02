@@ -282,7 +282,6 @@ class _FrameTimer:
         return self._timer_event
 
     def schedule_timer_event(self, device_time_now: mw_device_time) -> None:
-
         if self._frame_expire_time is None:
             self._frame_expire_time = device_time_now
         self._frame_expire_time.m_ll_device_time.value += int(

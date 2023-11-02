@@ -133,7 +133,6 @@ class FrameInfo:
 
     @classmethod
     def from_mwcap_video_frame_info(cls, info: mwcap_video_frame_info, init_time: DeviceInitTime) -> "FrameInfo":
-
         buffering_start_time_device_ticks = (
             info.allFieldStartTimes[1] if info.bInterlaced else info.allFieldStartTimes[0]
         )

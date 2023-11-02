@@ -18,7 +18,7 @@ class TestCaptureController(TestCase):
         device_settings = ProCaptureSettings()
         device_settings.transfer_mode = TransferMode.TIMER
         assert hasattr(self, "hardware_mode_is_set")
-        if self.hardware_mode_is_set:  # type: ignore
+        if self.hardware_mode_is_set:
             self._device: ProCaptureDeviceInterface = ProCaptureDevice(device_settings)
         else:
             self._device = MockProCaptureDevice(device_settings)

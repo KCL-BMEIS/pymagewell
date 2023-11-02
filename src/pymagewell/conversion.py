@@ -83,7 +83,6 @@ def convert_rgb_bytes_to_array(
     output_channel_order: RGBChannelOrder,
     output_alpha_location: AlphaChannelLocation,
 ) -> NDArray[Union[uint8, uint16]]:
-
     if colour_format in [
         ColourFormat.BGRA,
         ColourFormat.ABGR,

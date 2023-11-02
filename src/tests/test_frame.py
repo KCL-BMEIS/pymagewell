@@ -24,7 +24,6 @@ def _make_frame(test_frame_rgb24_array: NDArray[uint8], colour_format: ColourFor
     if colour_format == ColourFormat.RGB24:
         image_bytes = test_frame_rgb24_array.tobytes()
     else:
-
         image_bytes = FFMPEG_INSTANCE.encode_rgb24_array(test_frame_rgb24_array, colour_format)
     frame = VideoFrame(
         string_buffer=image_bytes, dimensions=_frame_dimensions, timestamps=_frame_timestamps, format=colour_format

@@ -25,7 +25,7 @@ if __name__ == '__main__':
     # Create a controller to start the device
     controller = ProCaptureController(device)
 
-    print('PRESS Q TO QUIT!')
+    print('PRESS ANY KEY TO QUIT!')
     counter = 0
     timestamps = []
     while True:
@@ -37,7 +37,7 @@ if __name__ == '__main__':
         # Here we are using OpenCV to display the acquired frames after conversion to BGR numpy arrays
         frame_array = frame.as_array(channel_order=RGBChannelOrder.BGR)
         imshow("video", frame_array)
-        if waitKey(1) & 0xFF == ord('q'):
+        if waitKey(1) != -1:
             break
 
         # Every 60 frames, print some timing information
